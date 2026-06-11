@@ -602,6 +602,17 @@ h3.kicker {
   width: 100%;
 }
 
+.delisted {
+  color: var(--oxblood);
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+}
+
+/* Data pages escape the reading measure. */
+.shell.wide {
+  max-width: min(96vw, 120rem);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .appear {
     animation: none;

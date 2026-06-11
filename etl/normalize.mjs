@@ -134,6 +134,45 @@ const resources = (contents.resources ?? []).map((r) => ({
   sessionIds: sessionsByResource.get(r.id) ?? [],
 }));
 
+// Apple removes resources from the catalog over time. Recover them from
+// older archived snapshots and mark them delisted — the archive is the
+// only place this history survives.
+const knownResourceIds = new Set(resources.map((r) => r.id));
+const currentSessionIds = new Set(sessions.map((s) => s.id));
+const olderSnapshots = (await readdir(rawRoot))
+  .filter((d) => d.startsWith("snapshot-") && d !== snapName)
+  .sort();
+for (const dir of olderSnapshots) {
+  let old;
+  try {
+    old = JSON.parse(await readFile(join(rawRoot, dir, "contents.json"), "utf8"));
+  } catch {
+    continue;
+  }
+  const lastSeen = old.updated?.slice(0, 10) ?? dir.split("-").slice(2).join("-");
+  const oldRefs = new Map();
+  for (const c of old.contents ?? []) {
+    for (const rid of c.related?.resources ?? c.relatedResourceIds ?? []) {
+      if (!oldRefs.has(rid)) oldRefs.set(rid, []);
+      oldRefs.get(rid).push(c.id);
+    }
+  }
+  for (const r of old.resources ?? []) {
+    if (knownResourceIds.has(r.id)) continue;
+    knownResourceIds.add(r.id);
+    resources.push({
+      id: r.id,
+      type: r.resource_type ?? r.resourceType ?? null,
+      title: typo(r.title ?? null),
+      description: typo(r.description ?? null),
+      url: r.url ?? null,
+      sessionIds: (oldRefs.get(r.id) ?? []).filter((id) => currentSessionIds.has(id)),
+      delisted: true,
+      lastSeen,
+    });
+  }
+}
+
 // Pre-baked aggregates so the site needs no runtime queries.
 const years = events.map((e) => e.year).sort((a, b) => a - b);
 const byYear = {};

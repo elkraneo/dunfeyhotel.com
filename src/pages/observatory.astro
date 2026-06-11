@@ -5,6 +5,8 @@ import Base from "../layouts/Base.astro";
 <Base
   title="Observatory"
   description="Coordinated, explorable views of thirteen years of WWDC — and every cross-section materializes as an actionable list of sessions and resources."
+  wide
+  searchable={false}
 >
   <section class="hero">
     <p class="kicker">The observatory</p>
@@ -577,16 +579,25 @@ import Base from "../layouts/Base.astro";
               tip: { format: { x: (y) => yearLabel(y) } },
               channels: { topic: "topic" },
             }),
-            // Topic glyphs on the lines — the app's signature. Black line art,
-            // so skipped on the dark theme.
+            // One glyph at each line's end as identifier — every point was
+            // noise. Black line art, so skipped on the dark theme.
             document.documentElement.dataset.theme !== "night"
-              ? Plot.image(lineData, {
-                  x: "year",
-                  y: "value",
-                  src: (d) => topicGlyph.get(d.id),
-                  width: 12,
-                  height: 12,
-                })
+              ? Plot.image(
+                  Object.values(
+                    lineData.reduce((acc, d) => {
+                      if (!acc[d.id] || d.year > acc[d.id].year) acc[d.id] = d;
+                      return acc;
+                    }, {})
+                  ),
+                  {
+                    x: "year",
+                    y: "value",
+                    src: (d) => topicGlyph.get(d.id),
+                    width: 15,
+                    height: 15,
+                    dx: 12,
+                  }
+                )
               : null,
           ].filter(Boolean),
         })

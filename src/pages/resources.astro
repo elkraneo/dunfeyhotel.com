@@ -13,6 +13,7 @@ const embed = resources
     d: r.description,
     u: r.url,
     by: r.sessionIds,
+    x: r.delisted ? r.lastSeen : null,
   }));
 const types = [...new Set(embed.map((r) => r.type))].sort();
 ---
@@ -20,13 +21,17 @@ const types = [...new Set(embed.map((r) => r.type))].sort();
 <Base
   title="Resources"
   description={`${total.toLocaleString("en")} documents, sample projects, guides and downloads referenced across WWDC — filterable by type, each linked to its citing sessions.`}
+  wide
+  searchable={false}
 >
   <section class="hero">
     <p class="kicker">The vault</p>
     <h1>Resources.</h1>
     <p class="lede">
       Every document, sample project, guide and download the sessions
-      reference — with the sessions that cite each one.
+      reference — with the sessions that cite each one. Items Apple removed
+      from its catalog are preserved from our archive, marked
+      <span class="delisted">[delisted]</span>.
     </p>
   </section>
 
@@ -112,7 +117,7 @@ const types = [...new Set(embed.map((r) => r.type))].sort();
         ...visible.map((r) => {
           const li = document.createElement("li");
           const head = document.createElement("span");
-          head.innerHTML = `<span class="meta">[${TYPE_LABELS[r.type] ?? r.type}]</span> `;
+          head.innerHTML = `<span class="meta">[${TYPE_LABELS[r.type] ?? r.type}]</span> ${r.x ? `<span class="meta delisted" title="No longer listed by Apple; preserved from our archive">[delisted ${r.x}]</span> ` : ""}`;
           const link = document.createElement("a");
           link.href = r.u;
           link.rel = "external";

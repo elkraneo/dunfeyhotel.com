@@ -8,6 +8,8 @@ const total = sessions.filter((s) => s.hasTranscript).length;
 <Base
   title="Transcripts"
   description={`Full transcripts for ${total.toLocaleString("en")} WWDC sessions — filter, then take them as .srt or plain text.`}
+  wide
+  searchable={false}
 >
   <section class="hero">
     <p class="kicker">The stenographer</p>
