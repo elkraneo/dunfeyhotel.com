@@ -45,9 +45,9 @@ const next = years[idx + 1];
     <a href={`/observatory/?year=${year}`}>Open in observatory</a>
   </p>
 
-  <div class="card-grid">
+  <ul class="session-rows">
     {talks.map((s) => (
       <SessionCard session={s} showYear={false} />
     ))}
-  </div>
+  </ul>
 </Base>

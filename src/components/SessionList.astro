@@ -15,8 +15,8 @@ list.sort((a, b) => (b.duration ?? 0) - (a.duration ?? 0));
 if (limit) list = list.slice(0, limit);
 ---
 
-<div class="card-grid">
+<ul class="session-rows">
   {list.map((s) => (
     <SessionCard session={s} />
   ))}
-</div>
+</ul>

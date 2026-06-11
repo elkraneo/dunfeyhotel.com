@@ -31,6 +31,7 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
           width="450"
           height="253"
           loading="eager"
+          onerror="this.remove()"
         />
       )}
       <p class="kicker">
@@ -58,7 +59,7 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
 
     {s.chapters.length > 0 && (
       <section class="block" aria-labelledby={`chapters-${s.id}`}>
-        <p class="kicker" id={`chapters-${s.id}`}>Chapters</p>
+        <h2 class="kicker" id={`chapters-${s.id}`}>Chapters</h2>
         <ul class="plain">
           {s.chapters.map((c) => (
             <li>
@@ -75,9 +76,9 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
 
     {s.codeSnippets.length > 0 && (
       <section class="block" aria-labelledby={`code-${s.id}`}>
-        <p class="kicker" id={`code-${s.id}`}>
-          Code shown on screen · {s.codeSnippets.length} snippets
-        </p>
+        <h2 class="kicker" id={`code-${s.id}`}>
+          Code shown on screen · {s.codeSnippets.length} {s.codeSnippets.length === 1 ? "snippet" : "snippets"}
+        </h2>
         {s.codeSnippets.map((snip) => (
           <details class="snippet">
             <summary>
@@ -97,7 +98,7 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
 
     {res.length > 0 && (
       <section class="block" aria-labelledby={`resources-${s.id}`}>
-        <p class="kicker" id={`resources-${s.id}`}>Resources</p>
+        <h2 class="kicker" id={`resources-${s.id}`}>Resources</h2>
         <ul class="plain">
           {res.map((r) => (
             <li>
@@ -111,12 +112,12 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
 
     {related.length > 0 && (
       <section class="block" aria-labelledby={`related-${s.id}`}>
-        <p class="kicker" id={`related-${s.id}`}>Related sessions</p>
-        <div class="card-grid">
+        <h2 class="kicker" id={`related-${s.id}`}>Related sessions</h2>
+        <ul class="session-rows">
           {related.map((r) => (
             <SessionCard session={r} />
           ))}
-        </div>
+        </ul>
       </section>
     )}
   </article>

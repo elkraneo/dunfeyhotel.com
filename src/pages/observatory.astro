@@ -40,19 +40,31 @@ import Base from "../layouts/Base.astro";
     <figure class="panel" id="panel-years">
       <figcaption class="kicker" id="caption-years"></figcaption>
       <div class="plot" id="plot-years"></div>
+      <details class="chart-data">
+        <summary>Same data as table</summary>
+        <div id="data-years"></div>
+      </details>
     </figure>
     <figure class="panel" id="panel-distribution">
       <figcaption class="kicker" id="caption-distribution"></figcaption>
       <div class="plot" id="plot-distribution"></div>
+      <details class="chart-data">
+        <summary>Same data as table</summary>
+        <div id="data-distribution"></div>
+      </details>
     </figure>
     <figure class="panel wide" id="panel-lines">
       <figcaption class="kicker" id="caption-lines"></figcaption>
       <div class="plot" id="plot-lines"></div>
+      <details class="chart-data">
+        <summary>Same data as table</summary>
+        <div id="data-lines"></div>
+      </details>
     </figure>
   </div>
 
   <section class="block" aria-labelledby="cross-section" id="cross-section-block">
-    <p class="kicker" id="cross-section">Cross-section</p>
+    <h2 class="kicker" id="cross-section">Cross-section</h2>
     <div class="chip-row" role="group" aria-label="Collect as" id="kind-chips"></div>
     <p class="meta" id="cross-summary" role="status"></p>
     <div id="cross-results"></div>
@@ -75,14 +87,31 @@ import Base from "../layouts/Base.astro";
     const { sessions, resources } = index;
     const resourceById = new Map(resources.map((r) => [r.id, r]));
 
-    // 19 hues tuned to the ledger palette, dark enough for white glyphs.
-    const PALETTE = [
-      "#6e2228", "#7d5e20", "#3d5a3f", "#2f4b6e", "#7a4a21",
-      "#5b3a68", "#205e5a", "#8d2f36", "#576238", "#386083",
-      "#8c4214", "#44406e", "#226b45", "#703354", "#665818",
-      "#2c5f73", "#84422c", "#4f5526", "#503e72",
-    ];
-    const topicColor = new Map(topics.map((t, i) => [t.id, PALETTE[i % PALETTE.length]]));
+    // 19 hues per theme: dark inks for light papers, lifted tones for night.
+    const PALETTES = {
+      ledger: [
+        "#6e2228", "#7d5e20", "#3d5a3f", "#2f4b6e", "#7a4a21",
+        "#5b3a68", "#205e5a", "#8d2f36", "#576238", "#386083",
+        "#8c4214", "#44406e", "#226b45", "#703354", "#665818",
+        "#2c5f73", "#84422c", "#4f5526", "#503e72",
+      ],
+      night: [
+        "#d4737c", "#c9a14e", "#8fbf94", "#85a8d4", "#cf9258",
+        "#b38ac4", "#6fbcb4", "#df8089", "#a9bb7c", "#84aed0",
+        "#d98d52", "#9b95cf", "#6fc097", "#c87fa6", "#bfae55",
+        "#7ab4cc", "#d18a6a", "#a8b36a", "#a48bd0",
+      ],
+    };
+    const topicIndex = new Map(topics.map((t, i) => [t.id, i]));
+    const palette = () => {
+      const theme = document.documentElement.dataset.theme;
+      return PALETTES[theme] ?? PALETTES.ledger;
+    };
+    const colorOf = (topicId) => {
+      const p = palette();
+      return p[topicIndex.get(topicId) % p.length];
+    };
+    const topicColor = { get: colorOf };
     const topicTitle = new Map(topics.map((t) => [t.id, t.title]));
     const slugOf = (title) =>
       title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -138,7 +167,7 @@ import Base from "../layouts/Base.astro";
     for (const y of [null, ...years]) {
       const b = document.createElement("button");
       b.type = "button";
-      b.className = "chip";
+      b.className = "chip fob";
       b.textContent = y === null ? "All years" : shortYear(y);
       b.addEventListener("click", () => {
         state.year = y;
@@ -212,7 +241,29 @@ import Base from "../layouts/Base.astro";
     });
 
     // ——— rendering ———
-    const mount = (id, node) => document.getElementById(id).replaceChildren(node);
+    // Charts are presentational (aria-hidden); the same data is always
+    // available as a real table right under each panel.
+    const mount = (id, node) => {
+      node.setAttribute("aria-hidden", "true");
+      document.getElementById(id).replaceChildren(node);
+    };
+    const esc = (v) =>
+      String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const dataTable = (id, headers, rows) => {
+      document.getElementById(id).innerHTML = `<table class="ledger">
+        <thead><tr>${headers.map((h) => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead>
+        <tbody>${rows
+          .map(
+            (r) =>
+              `<tr>${r
+                .map((c, i) =>
+                  i === 0 ? `<th scope="row">${esc(c)}</th>` : `<td class="num">${esc(c)}</td>`
+                )
+                .join("")}</tr>`
+          )
+          .join("")}</tbody>
+      </table>`;
+    };
     const PREVIEW = 24;
 
     function matchingSessions() {
@@ -235,20 +286,26 @@ import Base from "../layouts/Base.astro";
       if (state.kind === "sessions") {
         const list = [...matched].sort((a, b) => b.y - a.y || b.d - a.d);
         const visible = state.expanded ? list : list.slice(0, PREVIEW);
-        summary.textContent = `${list.length} sessions${state.year ? ` · ${yearLabel(state.year)}` : ""}`;
-        const grid = document.createElement("div");
-        grid.className = "card-grid";
-        for (const s of visible) {
-          const card = document.createElement("div");
-          card.className = "card";
-          card.innerHTML = `
-            ${s.img ? `<img class="card-thumb" src="${s.img}" alt="" loading="lazy" width="250" height="141">` : ""}
-            <p class="meta">${yearLabel(s.y)} · ${minutes(s.d)}${s.c ? ` · ${s.c} snippets` : ""}</p>
-            <h3><a href="/sessions/${s.id}/"></a></h3>`;
-          card.querySelector("a:last-of-type").textContent = s.t;
-          grid.append(card);
-        }
-        mount("cross-results", grid);
+        summary.textContent = `${list.length} sessions matching any active topic${state.year ? ` · ${yearLabel(state.year)}` : ""}`;
+        const rows = document.createElement("ul");
+        rows.className = "session-rows";
+        visible.forEach((s, i) => {
+          const row = document.createElement("li");
+          row.className = "session-row appear";
+          row.style.animationDelay = `${Math.min(i * 22, 440)}ms`;
+          const snips = s.c ? ` · ${s.c} ${s.c === 1 ? "snippet" : "snippets"}` : "";
+          row.innerHTML = `
+            ${s.img ? `<img class="row-thumb" src="${s.img}" alt="" loading="lazy" width="104" height="59" onerror="this.remove()">` : ""}
+            <div class="row-body">
+              <h3><a href="/sessions/${s.id}/"></a></h3>
+              <p class="meta">${yearLabel(s.y)}${snips}</p>
+            </div>
+            <span class="row-leader" aria-hidden="true"></span>
+            <span class="row-duration">${minutes(s.d)}</span>`;
+          row.querySelector("a").textContent = s.t;
+          rows.append(row);
+        });
+        mount("cross-results", rows);
         moreButton.hidden = state.expanded || list.length <= PREVIEW;
         moreButton.textContent = `Show all ${list.length}`;
       } else {
@@ -307,9 +364,10 @@ import Base from "../layouts/Base.astro";
         const v = b.dataset.year === "" ? null : Number(b.dataset.year);
         b.setAttribute("aria-pressed", String(v === state.year));
       });
-      topicChips.querySelectorAll(".chip").forEach((b) =>
-        b.setAttribute("aria-pressed", String(state.active.has(Number(b.dataset.topic))))
-      );
+      topicChips.querySelectorAll(".chip").forEach((b) => {
+        b.setAttribute("aria-pressed", String(state.active.has(Number(b.dataset.topic))));
+        b.style.setProperty("--chip-color", colorOf(Number(b.dataset.topic)));
+      });
 
       // A · measure per year
       const perYear = years.map((year) => ({
@@ -318,7 +376,7 @@ import Base from "../layouts/Base.astro";
       }));
       const total = perYear.reduce((n, d) => n + d.value, 0);
       document.getElementById("caption-years").textContent =
-        `${m.label} by year · ${fmt(state.year ? perYear.find((d) => d.year === state.year)?.value ?? 0 : total)} ${state.year ? yearLabel(state.year) : "total"}`;
+        `${m.label} by year, primary topic · ${fmt(state.year ? perYear.find((d) => d.year === state.year)?.value ?? 0 : total)} ${state.year ? yearLabel(state.year) : "total"}`;
       mount(
         "plot-years",
         Plot.plot({
@@ -332,11 +390,19 @@ import Base from "../layouts/Base.astro";
             Plot.barY(perYear, {
               x: "year",
               y: "value",
-              fill: (d) => (state.year === null || d.year === state.year ? css("--oxblood") : "#c9bb9e"),
+              fill: (d) =>
+                state.year === null || d.year === state.year
+                  ? css("--oxblood")
+                  : css("--bar-muted"),
               tip: tipYear,
             }),
           ],
         })
+      );
+      dataTable(
+        "data-years",
+        ["Year", m.label],
+        perYear.map((d) => [yearLabel(d.year), fmt(d.value)])
       );
 
       // B · distribution across topics
@@ -351,7 +417,12 @@ import Base from "../layouts/Base.astro";
         .filter((d) => d.value > 0)
         .sort((a, b) => b.value - a.value);
       document.getElementById("caption-distribution").textContent =
-        `${m.label} by topic · ${state.year ? yearLabel(state.year) : "all years"}`;
+        `${m.label} by primary topic · ${state.year ? yearLabel(state.year) : "all years"}`;
+      dataTable(
+        "data-distribution",
+        ["Topic", m.label],
+        perTopic.map((d) => [d.topic, fmt(d.value)])
+      );
       mount(
         "plot-distribution",
         Plot.plot({
@@ -380,7 +451,24 @@ import Base from "../layouts/Base.astro";
         id: c.topicId,
         value: m.of(c),
       }));
-      document.getElementById("caption-lines").textContent = `${m.label} per topic across years`;
+      document.getElementById("caption-lines").textContent =
+        `${m.label} per primary topic across years`;
+      dataTable(
+        "data-lines",
+        ["Topic", ...years.map(shortYear)],
+        topics
+          .filter((t) => state.active.has(t.id))
+          .map((t) => [
+            t.title,
+            ...years.map((y) =>
+              fmt(
+                cells
+                  .filter((c) => c.topicId === t.id && c.year === y)
+                  .reduce((n, c) => n + m.of(c), 0)
+              )
+            ),
+          ])
+      );
       mount(
         "plot-lines",
         Plot.plot({
@@ -396,7 +484,7 @@ import Base from "../layouts/Base.astro";
               x: "year",
               y: "value",
               z: "topic",
-              stroke: (d) => topicColor.get(d.id),
+              stroke: (d) => colorOf(d.id),
               strokeWidth: 1.8,
               curve: "monotone-x",
             }),
@@ -422,6 +510,7 @@ import Base from "../layouts/Base.astro";
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(render, 150);
     });
+    addEventListener("dh-theme", render);
   </script>
 </Base>
 

@@ -73,7 +73,7 @@ const crossSections = [
   </section>
 
   <section aria-labelledby="cross-sections">
-    <p class="kicker" id="cross-sections">Start from a cross-section</p>
+    <h2 class="kicker" id="cross-sections">Start from a cross-section</h2>
     <p class="chip-row">
       {crossSections.map((c) => (
         <a class="chip linkchip" href={c.href}>{c.label}</a>
@@ -82,8 +82,9 @@ const crossSections = [
   </section>
 
   <section class="block" aria-labelledby="registry">
-    <p class="kicker" id="registry">Check-ins by year</p>
+    <h2 class="kicker" id="registry">Check-ins by year</h2>
     <table class="ledger">
+      <caption class="visually-hidden">Talks, hours and transcripts per WWDC year</caption>
       <thead>
         <tr>
           <th scope="col">Year</th>
@@ -110,7 +111,7 @@ const crossSections = [
                   aria-hidden="true"
                 />
               </td>
-              <td><a class="timestamp-link" href={`/years/${y}/documents/`}>documents</a></td>
+              <td><a class="timestamp-link" href={`/years/${y}/documents/`}>documents<span class="visually-hidden"> referenced at WWDC{String(y).slice(2)}</span></a></td>
             </tr>
           );
         })}
@@ -124,10 +125,11 @@ const crossSections = [
   </section>
 
   <section class="block" aria-labelledby="trends">
-    <p class="kicker" id="trends">
+    <h2 class="kicker" id="trends">
       Topic movement · {prior[0]}–{prior.at(-1)} vs {recent[0]}–{recent.at(-1)}
-    </p>
+    </h2>
     <table class="ledger">
+      <caption class="visually-hidden">Talks per topic, recent three years versus the prior three</caption>
       <thead>
         <tr>
           <th scope="col">Topic</th>
@@ -152,7 +154,7 @@ const crossSections = [
               {delta > 0 ? `+${delta}` : delta}
             </td>
             <td>
-              <a class="timestamp-link" href={`/observatory/?topics=${topicSlug(topic.title)}`}>observe</a>
+              <a class="timestamp-link" href={`/observatory/?topics=${topicSlug(topic.title)}`}>observe<span class="visually-hidden"> {topic.title} in the observatory</span></a>
             </td>
           </tr>
         ))}

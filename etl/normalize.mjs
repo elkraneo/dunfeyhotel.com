@@ -37,6 +37,9 @@ try {
   transcriptIds = new Set(Object.keys(manifest.individual ?? {}));
 } catch {}
 
+// Typographic apostrophes for prose fields (never applied to code).
+const typo = (v) => (typeof v === "string" ? v.replace(/'/g, "’") : v);
+
 const stripHTML = (html) =>
   html
     .replace(/<[^>]+>/g, "")
@@ -83,8 +86,8 @@ const sessions = contents.contents
     id: c.id,
     eventId: c.eventId,
     year: Number(c.eventId.slice(4)),
-    title: c.title,
-    description: c.description ?? null,
+    title: typo(c.title),
+    description: typo(c.description ?? null),
     type: c.type,
     duration: c.media?.duration ?? null,
     primaryTopicId: c.primaryTopicID ?? null,
@@ -118,8 +121,8 @@ for (const c of contents.contents) {
 const resources = (contents.resources ?? []).map((r) => ({
   id: r.id,
   type: r.resource_type ?? r.resourceType ?? null,
-  title: r.title ?? null,
-  description: r.description ?? null,
+  title: typo(r.title ?? null),
+  description: typo(r.description ?? null),
   url: r.url ?? null,
   sessionIds: sessionsByResource.get(r.id) ?? [],
 }));

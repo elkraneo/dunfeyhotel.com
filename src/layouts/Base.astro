@@ -1,5 +1,7 @@
 ---
 import "../styles/global.css";
+import { aggregates, sessions, years } from "../lib/data.js";
+
 const { title, description, ogImage } = Astro.props;
 const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as data";
 const desc =
@@ -12,6 +14,16 @@ const desc =
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline>
+      (() => {
+        try {
+          const t = localStorage.getItem("dh-theme");
+          if (t) document.documentElement.dataset.theme = t;
+          else if (matchMedia("(prefers-color-scheme: dark)").matches)
+            document.documentElement.dataset.theme = "night";
+        } catch {}
+      })();
+    </script>
     <title>{fullTitle}</title>
     <meta name="description" content={desc} />
     <meta property="og:title" content={fullTitle} />
@@ -39,23 +51,47 @@ const desc =
           <a href="/topics/accessibility-and-inclusion/">Topics</a>
           <a href="/search/">Search</a>
           <a href="/about/">About</a>
+          <select id="theme-select" class="theme-select" aria-label="Colour theme">
+            <option value="ledger">Ledger</option>
+            <option value="night">Night audit</option>
+            <option value="cupertino">Cupertino</option>
+          </select>
         </nav>
       </header>
       <main id="main">
         <slot />
       </main>
       <footer class="colophon">
-        <p>
-          An independent, non-commercial index for research and education. All
-          videos, transcripts, code and resources belong to Apple Inc. and are
-          linked at <a href="https://developer.apple.com">developer.apple.com</a>
-          — nothing is rehosted here.
-        </p>
-        <p>
-          Named for the Dunfey Hotel in San Mateo, where Apple held its first
-          developer conference.
+        <div>
+          <p class="meta">
+            {sessions.length.toLocaleString("en")} talks · {years[0]}–{years.at(-1)} ·
+            all content © Apple Inc. —
+            <a href="https://developer.apple.com">linked, never rehosted</a>
+          </p>
+          <p class="meta">
+            made with ★ in Berlin by <a href="https://elkraneo.com">elkraneo</a>
+          </p>
+        </div>
+        <p class="stamp">
+          Dunfey Hotel Registry<br />
+          Snapshot № {aggregates.snapshotId}<br />
+          {aggregates.snapshotUpdated.slice(0, 10)}
         </p>
       </footer>
     </div>
+    <script is:inline>
+      (() => {
+        const sel = document.getElementById("theme-select");
+        if (!sel) return;
+        sel.value = document.documentElement.dataset.theme || "ledger";
+        sel.addEventListener("change", () => {
+          document.documentElement.dataset.theme = sel.value;
+          try {
+            localStorage.setItem("dh-theme", sel.value);
+          } catch {}
+          dispatchEvent(new CustomEvent("dh-theme"));
+        });
+      })();
+    </script>
   </body>
 </html>

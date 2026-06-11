@@ -51,11 +51,11 @@ const byYearGroups = years
     >
       {counts.map((c, i) => (
         <rect
+          class={c ? "spark-bar" : "spark-bar is-empty"}
           x={i * bw + 2}
           y={H - (c / max) * (H - 14)}
           width={bw - 4}
-          height={(c / max) * (H - 14)}
-          fill={c ? "var(--oxblood)" : "var(--rule)"}
+          height={Math.max((c / max) * (H - 14), c ? 2 : 1)}
         />
       ))}
     </svg>
@@ -64,14 +64,14 @@ const byYearGroups = years
 
   {byYearGroups.map(({ year, talks: group }) => (
     <section class="block" aria-labelledby={`y-${year}`}>
-      <p class="kicker" id={`y-${year}`}>
+      <h2 class="kicker" id={`y-${year}`}>
         <a href={`/years/${year}/`}>WWDC{String(year).slice(2)}</a> · {group.length}
-      </p>
-      <div class="card-grid">
+      </h2>
+      <ul class="session-rows">
         {group.map((s) => (
           <SessionCard session={s} showYear={false} />
         ))}
-      </div>
+      </ul>
     </section>
   ))}
 </Base>

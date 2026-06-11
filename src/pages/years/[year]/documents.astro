@@ -73,7 +73,7 @@ const total = new Set(
 
   {byTopic.map((g) => (
     <section class="block" id={topicSlug(g.topic.title)}>
-      <p class="kicker">{g.topic.title} · {g.items.length}</p>
+      <h2 class="kicker">{g.topic.title} · {g.items.length}</h2>
       <ul class="plain">
         {g.items.map(({ resource: r, referencedBy }) => (
           <li>

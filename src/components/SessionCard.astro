@@ -1,18 +1,31 @@
 ---
+// One registry row per session: matted thumb, title, dotted leader, duration.
 import { formatDuration } from "../lib/data.js";
 
 const { session: s, showYear = true } = Astro.props;
+const snips = s.codeSnippets?.length ?? 0;
+const metaParts = [
+  showYear ? `WWDC${String(s.year).slice(2)}` : null,
+  snips ? `${snips} ${snips === 1 ? "snippet" : "snippets"}` : null,
+].filter(Boolean);
 ---
 
-<div class="card">
+<li class="session-row">
   {s.thumb && (
-    <a href={`/sessions/${s.id}/`} tabindex="-1" aria-hidden="true">
-      <img class="card-thumb" src={s.thumb} alt="" loading="lazy" width="250" height="141" />
-    </a>
+    <img
+      class="row-thumb"
+      src={s.thumb}
+      alt=""
+      loading="lazy"
+      width="104"
+      height="59"
+      onerror="this.remove()"
+    />
   )}
-  <p class="meta">
-    {showYear && `WWDC${String(s.year).slice(2)} · `}{formatDuration(s.duration)}
-    {s.codeSnippets?.length > 0 && ` · ${s.codeSnippets.length} snippets`}
-  </p>
-  <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
-</div>
+  <div class="row-body">
+    <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
+    {metaParts.length > 0 && <p class="meta">{metaParts.join(" · ")}</p>}
+  </div>
+  <span class="row-leader" aria-hidden="true"></span>
+  <span class="row-duration">{formatDuration(s.duration)}</span>
+</li>

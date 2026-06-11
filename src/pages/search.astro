@@ -61,4 +61,24 @@ import Base from "../layouts/Base.astro";
   #search .pagefind-ui__result-title {
     font-weight: 560;
   }
+
+  #search mark {
+    background: transparent;
+    color: inherit;
+    font-weight: 650;
+    border-bottom: 2px solid var(--brass);
+  }
+
+  #search .pagefind-ui__search-clear {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--oxblood);
+  }
+
+  #search .pagefind-ui__search-input:focus-visible {
+    outline: 2px solid var(--oxblood);
+    outline-offset: 2px;
+  }
 </style>

@@ -1,0 +1,51 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base title="Room not found" description="This page is not in the registry.">
+  <section class="hero" style="text-align:center">
+    <div class="dnd" aria-hidden="true">
+      <span class="dnd-hole"></span>
+      <span class="dnd-text">Do Not<br />Disturb</span>
+    </div>
+    <h1>Room not found.</h1>
+    <p class="lede" style="margin-inline:auto">
+      Nothing is registered at this address. Try the
+      <a href="/search/">concierge</a> or return to the
+      <a href="/">lobby</a>.
+    </p>
+  </section>
+</Base>
+
+<style>
+  .dnd {
+    display: inline-block;
+    border: 2px solid var(--oxblood);
+    border-radius: 14px;
+    padding: 2.4rem 1.4rem 1.6rem;
+    margin-block-end: 1.5rem;
+    transform: rotate(-4deg);
+    position: relative;
+    background: var(--paper-deep);
+  }
+
+  .dnd-hole {
+    position: absolute;
+    top: 0.7rem;
+    left: 50%;
+    transform: translateX(-50%);
+    inline-size: 1.1rem;
+    block-size: 1.1rem;
+    border: 2px solid var(--oxblood);
+    border-radius: 50%;
+  }
+
+  .dnd-text {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--oxblood);
+    line-height: 1.8;
+  }
+</style>
