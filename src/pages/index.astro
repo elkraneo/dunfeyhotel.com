@@ -42,9 +42,9 @@ const deepCut = [...sessions]
   .sort((a, b) => (b.duration ?? 0) - (a.duration ?? 0))[0];
 const resurfaced = [
   {
-    fact: `${mover.topic.title} moved hardest: ${mover.before} → ${mover.now} talks across the last three conferences.`,
+    fact: `${mover.topic.title} moved hardest: ${mover.before} → ${mover.now} sessions across the last three editions.`,
     href: `/topics/${topicSlug(mover.topic.title)}/`,
-    label: "follow the trend",
+    label: "the trend",
   },
   {
     fact: `“${densest.title}” (${densest.year}) put ${densest.codeSnippets.length} pieces of code on screen — more than any other session.`,
@@ -52,7 +52,7 @@ const resurfaced = [
     label: "read the code",
   },
   {
-    fact: `Only ${aggregates.byYear[years[0]].talks} talks survive from WWDC${String(years[0]).slice(2)}. “${deepCut.title}” is the longest of them.`,
+    fact: `Only ${aggregates.byYear[years[0]].talks} sessions survive from WWDC${String(years[0]).slice(2)}. “${deepCut.title}” is the longest of them.`,
     href: `/sessions/${deepCut.id}/`,
     label: "open the deep cut",
   },
@@ -87,20 +87,13 @@ const crossSections = [
       on-screen code, cross-references. Watching happens at Apple — everything
       else happens here.
     </p>
-    <form class="concierge" action="/search/" method="get" role="search">
-      <label class="visually-hidden" for="q">Search the registry</label>
-      <input
-        id="q"
-        name="q"
-        type="search"
-        placeholder={`Search ${totalTalks.toLocaleString("en")} sessions, their code and documents…`}
-      />
-      <button class="watch" type="submit">Search</button>
-    </form>
+    <p>
+      <a class="watch" href="/observatory/">Enter the observatory</a>
+    </p>
     <div class="figures">
-      <div class="figure"><b>{totalTalks.toLocaleString("en")}</b><span>talks</span></div>
+      <div class="figure"><b>{totalTalks.toLocaleString("en")}</b><span>sessions</span></div>
       <div class="figure"><b>{totalHours.toLocaleString("en")}</b><span>hours</span></div>
-      <div class="figure"><b>{years.length}</b><span>conferences</span></div>
+      <div class="figure"><b>{years.length}</b><span>editions</span></div>
       <div class="figure"><b>{totalDocs.toLocaleString("en")}</b><span>documents referenced</span></div>
     </div>
   </section>
@@ -118,7 +111,7 @@ const crossSections = [
   </section>
 
   <section class="block" aria-labelledby="cross-sections">
-    <h2 class="kicker" id="cross-sections">Start from a cross-section</h2>
+    <h2 class="kicker" id="cross-sections">Start from the front desk</h2>
     <p class="chip-row">
       {crossSections.map((c) => (
         <a class="chip linkchip" href={c.href}>{c.label}</a>
@@ -127,13 +120,13 @@ const crossSections = [
   </section>
 
   <section class="block" aria-labelledby="registry">
-    <h2 class="kicker" id="registry">Check-ins by year</h2>
+    <h2 class="kicker" id="registry">The editions</h2>
     <table class="ledger">
-      <caption class="visually-hidden">Talks, hours and transcripts per WWDC year</caption>
+      <caption class="visually-hidden">Sessions, hours and transcripts per WWDC edition</caption>
       <thead>
         <tr>
           <th scope="col">Year</th>
-          <th scope="col" class="num">Talks</th>
+          <th scope="col" class="num">Sessions</th>
           <th scope="col" class="num">Hours</th>
           <th scope="col" class="num">Transcripts</th>
           <th scope="col" aria-label="Relative volume"></th>
@@ -156,15 +149,15 @@ const crossSections = [
                   aria-hidden="true"
                 />
               </td>
-              <td><a class="timestamp-link" href={`/years/${y}/documents/`}>documents<span class="visually-hidden"> referenced at WWDC{String(y).slice(2)}</span></a></td>
+              <td><a class="timestamp-link" href={`/years/${y}/resources/`}>resources<span class="visually-hidden"> referenced at WWDC{String(y).slice(2)}</span></a></td>
             </tr>
           );
         })}
       </tbody>
     </table>
     <p class="footnote">
-      Talks only — no labs or get-togethers. Pre-2019 years reflect what Apple
-      still publishes, not the full conference.
+      Videos and talks only — no labs or get-togethers. Pre-2019 editions
+      reflect what Apple still publishes, not the full conference.
     </p>
   </section>
 
@@ -173,7 +166,7 @@ const crossSections = [
       Topic movement · {prior[0]}–{prior.at(-1)} vs {recent[0]}–{recent.at(-1)}
     </h2>
     <table class="ledger">
-      <caption class="visually-hidden">Talks per topic, recent three years versus the prior three</caption>
+      <caption class="visually-hidden">Sessions per topic, recent three years versus the prior three</caption>
       <thead>
         <tr>
           <th scope="col">Topic</th>

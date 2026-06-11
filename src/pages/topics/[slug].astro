@@ -36,7 +36,7 @@ const byYearGroups = years
     <p class="kicker">Topic</p>
     <h1>{topic.title}</h1>
     <div class="figures">
-      <div class="figure"><b>{talks.length}</b><span>talks since {years[0]}</span></div>
+      <div class="figure"><b>{talks.length}</b><span>sessions since {years[0]}</span></div>
       <div class="figure">
         <b>{Math.round(talks.reduce((n, s) => n + (s.duration ?? 0), 0) / 3600)}</b>
         <span>hours</span>

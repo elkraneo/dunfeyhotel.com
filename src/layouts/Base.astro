@@ -30,10 +30,27 @@ const desc =
     <script is:inline>
       (() => {
         try {
-          const mode = localStorage.getItem("dh-theme") || "auto";
-          const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+          const legacy = localStorage.getItem("dh-theme");
+          if (legacy && !localStorage.getItem("dh-theme-family")) {
+            const map = {
+              ledger: ["ledger", "light"],
+              night: ["ledger", "dark"],
+              cupertino: ["cupertino", "light"],
+              auto: ["ledger", "auto"],
+            };
+            const [f, m] = map[legacy] ?? ["ledger", "auto"];
+            localStorage.setItem("dh-theme-family", f);
+            localStorage.setItem("dh-theme-mode", m);
+          }
+          const family = localStorage.getItem("dh-theme-family") || "ledger";
+          const mode = localStorage.getItem("dh-theme-mode") || "auto";
+          const dark =
+            mode === "dark" ||
+            (mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
           document.documentElement.dataset.theme =
-            mode === "auto" ? (dark ? "night" : "ledger") : mode;
+            family === "cupertino"
+              ? dark ? "cupertino-night" : "cupertino"
+              : dark ? "night" : "ledger";
         } catch {}
       })();
     </script>
@@ -61,11 +78,14 @@ const desc =
           {nav.map((item) => (
             <a href={item.href} aria-current={current(item.section)}>{item.label}</a>
           ))}
-          <select id="theme-select" class="theme-select" aria-label="Colour theme">
-            <option value="auto">Auto</option>
+          <select id="theme-family" class="theme-select" aria-label="Theme">
             <option value="ledger">Ledger</option>
-            <option value="night">Night audit</option>
             <option value="cupertino">Cupertino</option>
+          </select>
+          <select id="theme-mode" class="theme-select" aria-label="Appearance">
+            <option value="auto">Auto</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
           </select>
         </nav>
       </header>
@@ -76,7 +96,7 @@ const desc =
       <footer class="colophon">
         <div>
           <p class="meta">
-            {sessions.length.toLocaleString("en")} talks · {years[0]}–{years.at(-1)} ·
+            {sessions.length.toLocaleString("en")} sessions · {years[0]}–{years.at(-1)} ·
             all content © Apple Inc. —
             <a href="https://developer.apple.com">linked, never rehosted</a>
           </p>
@@ -93,26 +113,38 @@ const desc =
     </div>
     <script is:inline>
       (() => {
-        const sel = document.getElementById("theme-select");
-        if (!sel) return;
+        const familySel = document.getElementById("theme-family");
+        const modeSel = document.getElementById("theme-mode");
+        if (!familySel || !modeSel) return;
         const media = matchMedia("(prefers-color-scheme: dark)");
-        const mode = () => {
+        const get = (k, d) => {
           try {
-            return localStorage.getItem("dh-theme") || "auto";
+            return localStorage.getItem(k) || d;
           } catch {
-            return "auto";
+            return d;
           }
         };
         const apply = () => {
-          const m = mode();
+          const family = get("dh-theme-family", "ledger");
+          const mode = get("dh-theme-mode", "auto");
+          const dark = mode === "dark" || (mode === "auto" && media.matches);
           document.documentElement.dataset.theme =
-            m === "auto" ? (media.matches ? "night" : "ledger") : m;
+            family === "cupertino"
+              ? dark ? "cupertino-night" : "cupertino"
+              : dark ? "night" : "ledger";
           dispatchEvent(new CustomEvent("dh-theme"));
         };
-        sel.value = mode();
-        sel.addEventListener("change", () => {
+        familySel.value = get("dh-theme-family", "ledger");
+        modeSel.value = get("dh-theme-mode", "auto");
+        familySel.addEventListener("change", () => {
           try {
-            localStorage.setItem("dh-theme", sel.value);
+            localStorage.setItem("dh-theme-family", familySel.value);
+          } catch {}
+          apply();
+        });
+        modeSel.addEventListener("change", () => {
+          try {
+            localStorage.setItem("dh-theme-mode", modeSel.value);
           } catch {}
           apply();
         });

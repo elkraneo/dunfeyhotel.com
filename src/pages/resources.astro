@@ -30,7 +30,17 @@ const total = resources.length;
   </div>
 
   <p class="meta" id="r-count" role="status"></p>
-  <ul class="plain" id="r-rows" data-dh-reactive></ul>
+  <table class="ledger" data-dh-reactive>
+    <caption class="visually-hidden">Referenced resources</caption>
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+        <th scope="col">Resource</th>
+        <th scope="col">Cited in</th>
+      </tr>
+    </thead>
+    <tbody id="r-rows"></tbody>
+  </table>
   <p><button type="button" class="watch secondary" id="r-more" hidden>Show everything</button></p>
 
   <script>
@@ -79,13 +89,6 @@ const total = resources.length;
       render();
     });
 
-    const copy = (text, button) => {
-      navigator.clipboard?.writeText(text);
-      const old = button.textContent;
-      button.textContent = "copied";
-      setTimeout(() => (button.textContent = old), 900);
-    };
-
     // A resource matches years/topics through the sessions that cite it.
     function matchesFilter(r, f) {
       if (!f.years.size && !f.topics.size) return true;
@@ -119,39 +122,42 @@ const total = resources.length;
       const visible = state.expanded ? list : list.slice(0, PREVIEW);
       rowsEl.replaceChildren(
         ...visible.map((r) => {
-          const li = document.createElement("li");
-          const head = document.createElement("span");
-          head.innerHTML = `<span class="meta">[${TYPE_LABELS[r.type] ?? r.type}]</span> ${r.delisted ? `<span class="meta delisted" title="No longer listed by Apple; preserved from our archive">[delisted ${r.lastSeen}]</span> ` : ""}`;
+          const tr = document.createElement("tr");
+          const typeCell = document.createElement("td");
+          typeCell.className = "mono-id";
+          typeCell.textContent = TYPE_LABELS[r.type] ?? r.type;
+          const resCell = document.createElement("td");
           const link = document.createElement("a");
           link.href = r.url;
           link.rel = "external";
-          link.innerHTML = "<strong></strong>";
-          link.querySelector("strong").textContent = r.title;
-          li.append(head, link);
-          if (r.description) li.append(` — ${r.description}`);
-
-          const meta = document.createElement("span");
-          meta.className = "meta";
-          if (r.sessionIds.length) {
-            meta.append(" · in ");
-            r.sessionIds.slice(0, 4).forEach((id, i) => {
-              if (i) meta.append(", ");
-              const a = document.createElement("a");
-              a.href = `/sessions/${id}/`;
-              a.title = sessionMeta.get(id)?.t ?? id;
-              a.textContent = `§${id.replace("wwdc", "'").replace("-", " ")}`;
-              meta.append(a);
-            });
-            if (r.sessionIds.length > 4) meta.append(` +${r.sessionIds.length - 4}`);
+          link.textContent = r.title;
+          resCell.append(link);
+          if (r.delisted) {
+            const d = document.createElement("span");
+            d.className = "delisted";
+            d.title = "No longer listed by Apple; preserved from our archive";
+            d.textContent = ` [delisted ${r.lastSeen}]`;
+            resCell.append(d);
           }
-          const copyBtn = document.createElement("button");
-          copyBtn.type = "button";
-          copyBtn.className = "linkish";
-          copyBtn.textContent = "copy url";
-          copyBtn.addEventListener("click", (e) => copy(r.url, e.currentTarget));
-          meta.append(" · ", copyBtn);
-          li.append(meta);
-          return li;
+          if (r.description) {
+            const desc = document.createElement("p");
+            desc.className = "meta res-desc";
+            desc.textContent = r.description;
+            resCell.append(desc);
+          }
+          const inCell = document.createElement("td");
+          inCell.className = "mono-id";
+          r.sessionIds.slice(0, 3).forEach((id, i) => {
+            if (i) inCell.append(", ");
+            const a = document.createElement("a");
+            a.href = `/sessions/${id}/`;
+            a.title = sessionMeta.get(id)?.t ?? id;
+            a.textContent = id.replace("wwdc", "’").replace("-", " ");
+            inCell.append(a);
+          });
+          if (r.sessionIds.length > 3) inCell.append(` +${r.sessionIds.length - 3}`);
+          tr.append(typeCell, resCell, inCell);
+          return tr;
         })
       );
       moreEl.hidden = state.expanded || list.length <= PREVIEW;
@@ -165,3 +171,10 @@ const total = resources.length;
     });
   </script>
 </Base>
+
+<style is:global>
+  .res-desc {
+    margin: 0.15rem 0 0;
+    max-width: 52ch;
+  }
+</style>

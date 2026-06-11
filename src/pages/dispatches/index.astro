@@ -32,14 +32,14 @@ const dispatches = (await getCollection("dispatches", ({ data }) => !data.draft)
   <section class="block">
     <h2 class="kicker">Generated catalogs</h2>
     <p>
-      Per year: every referenced resource, grouped by topic, with TSV download.
+      Per edition: every referenced resource, grouped by topic, with TSV download.
     </p>
     <ul class="plain">
       {[...years].reverse().map((y) => (
         <li>
-          <a href={`/years/${y}/documents/`}>WWDC{String(y).slice(2)} related documents</a>
+          <a href={`/years/${y}/resources/`}>WWDC{String(y).slice(2)} related resources</a>
           {" · "}
-          <a class="timestamp-link" href={`/years/${y}/documents.tsv`}>.tsv</a>
+          <a class="timestamp-link" href={`/years/${y}/resources.tsv`}>.tsv</a>
         </li>
       ))}
     </ul>

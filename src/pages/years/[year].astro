@@ -32,7 +32,7 @@ const next = years[idx + 1];
     </p>
     <h1>{event.name}</h1>
     <div class="figures">
-      <div class="figure"><b>{stats.talks}</b><span>talks</span></div>
+      <div class="figure"><b>{stats.talks}</b><span>sessions</span></div>
       <div class="figure"><b>{Math.round(stats.totalDurationSeconds / 3600)}</b><span>hours</span></div>
       <div class="figure"><b>{stats.codeSnippets}</b><span>code snippets</span></div>
       <div class="figure"><b>{stats.withTranscript}</b><span>with transcripts</span></div>
@@ -40,8 +40,8 @@ const next = years[idx + 1];
   </section>
 
   <p class="meta">
-    <a href={`/years/${year}/documents/`}>Related documents catalog</a> ·{" "}
-    <a href={`/years/${year}/documents.tsv`}>.tsv</a> ·{" "}
+    <a href={`/years/${year}/resources/`}>Related resources catalog</a> ·{" "}
+    <a href={`/years/${year}/resources.tsv`}>.tsv</a> ·{" "}
     <a href={`/observatory/?year=${year}`}>Open in observatory</a>
   </p>
 

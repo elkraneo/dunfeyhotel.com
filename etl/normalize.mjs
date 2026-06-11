@@ -262,6 +262,7 @@ const observatoryIndex = {
     t: s.title,
     y: s.year,
     k: s.topicIds,
+    p: s.primaryTopicId,
     d: s.duration ?? 0,
     c: s.codeSnippets.length,
     r: s.resourceIds,

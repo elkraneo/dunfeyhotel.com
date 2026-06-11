@@ -47,17 +47,17 @@ const total = new Set(
 ---
 
 <Base
-  title={`${event.name} related documents`}
-  description={`All ${total} documents, sample code projects and downloads referenced at ${event.name}, grouped by topic.`}
+  title={`${event.name} related resources`}
+  description={`All ${total} resources — documentation, sample code, guides and downloads — referenced at ${event.name}, grouped by topic.`}
 >
   <p class="visually-hidden"><span data-pagefind-filter="year">{String(year)}</span></p>
   <section class="hero">
     <p class="kicker"><a href={`/years/${year}/`}>{event.name}</a> · generated catalog</p>
-    <h1>{event.name} related documents</h1>
+    <h1>{event.name} related resources</h1>
     <p class="lede">
-      The {total} documents, sample projects, guides and downloads referenced
+      The {total} resources — documentation, sample projects, guides and downloads — referenced
       by {event.name} sessions, grouped by topic. Also available as
-      <a href={`/years/${year}/documents.tsv`}>raw TSV</a>.
+      <a href={`/years/${year}/resources.tsv`}>raw TSV</a>.
     </p>
   </section>
 

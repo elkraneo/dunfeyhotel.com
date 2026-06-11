@@ -11,7 +11,7 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
 
 <details class="registry-bar" open={open}>
   <summary>
-    <span class="kicker">Cross-section</span>
+    <span class="kicker">Front desk</span>
     <span class="meta" id="dh-summary">everything</span>
   </summary>
   <div class="rb-controls">
@@ -54,6 +54,12 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
         "#008299", "#0071a4", "#0040dd", "#3634a3", "#8944ab",
         "#d30f45", "#7f6545", "#365314", "#155e75", "#9d174d",
         "#4d7c0f", "#5b21b6", "#b25000", "#0f766e",
+      ],
+      "cupertino-night": [
+        "#ff453a", "#ff9f0a", "#ffd60a", "#32d74b", "#66d4cf",
+        "#5ac8f5", "#64d2ff", "#0a84ff", "#7d7aff", "#bf5af2",
+        "#ff375f", "#ac8e68", "#a2d149", "#63e6e2", "#ff6482",
+        "#8fd158", "#5e5ce6", "#ffb340", "#30d158",
       ],
     };
     const colorOf = (i) => {
@@ -148,6 +154,9 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
           String(b.dataset.topic ? F.topics.has(Number(b.dataset.topic)) : F.topics.size === 0)
         )
       );
+
+      yearsEl.toggleAttribute("data-filtered", F.years.size > 0);
+      topicsEl.toggleAttribute("data-filtered", F.topics.size > 0);
 
       applyStaticRows();
       dispatchEvent(new CustomEvent("dh-filter"));

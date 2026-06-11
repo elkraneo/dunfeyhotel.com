@@ -71,6 +71,29 @@
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 }
 
+/* Theme: Cupertino Night */
+[data-theme="cupertino-night"] {
+  --paper: #161617;
+  --paper-deep: #232325;
+  --ink: #f5f5f7;
+  --ink-soft: #a1a1a6;
+  --oxblood: #6cb4ff;
+  --oxblood-bright: #82c2ff;
+  --brass: #98989d;
+  --rule: #3a3a3c;
+  --rule-strong: #545456;
+  --figure-ink: #f5f5f7;
+  --lede-ink: #d1d1d6;
+  --bar-muted: #48484a;
+  --thumb-filter: none;
+  --grain-a: transparent;
+  --grain-b: transparent;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -566,6 +589,15 @@ h3.kicker {
 .chip.topic[aria-pressed="true"] {
   background: var(--chip-color, var(--ink));
   border-color: var(--chip-color, var(--ink));
+}
+
+/* Once a selection exists, the unselected dim — everything counts until you choose. */
+.chip-row[data-filtered] .chip[aria-pressed="false"] {
+  opacity: 0.5;
+}
+
+.chip-row[data-filtered] .chip[aria-pressed="false"]:hover {
+  opacity: 1;
 }
 
 .chip.fob::before {

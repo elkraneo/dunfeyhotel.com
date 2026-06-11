@@ -22,12 +22,27 @@ const total = sessions.filter((s) => s.hasTranscript).length;
   </section>
 
   <p class="meta" id="t-count" role="status"></p>
-  <ul class="session-rows" id="t-rows" data-dh-reactive></ul>
+  <table class="ledger" data-dh-reactive>
+    <caption class="visually-hidden">Sessions with transcripts</caption>
+    <thead>
+      <tr>
+        <th scope="col">№</th>
+        <th scope="col">Session</th>
+        <th scope="col">Topic</th>
+        <th scope="col">Edition</th>
+        <th scope="col" class="num">Min</th>
+        <th scope="col" colspan="2">Download</th>
+      </tr>
+    </thead>
+    <tbody id="t-rows"></tbody>
+  </table>
   <p><button type="button" class="watch secondary" id="t-more" hidden>Show everything</button></p>
 
   <script>
     import index from "../../data/normalized/observatory-index.json";
+    import explorer from "../../data/normalized/explorer.json";
 
+    const topicMeta = new Map(explorer.topics.map((t) => [t.id, t]));
     const all = index.sessions
       .filter((s) => s.tr && s.trUrl)
       .sort((a, b) => b.y - a.y || a.t.localeCompare(b.t));
@@ -89,13 +104,6 @@ const total = sessions.filter((s) => s.hasTranscript).length;
       }
     }
 
-    const copy = (text, button) => {
-      navigator.clipboard?.writeText(text);
-      const old = button.textContent;
-      button.textContent = "copied";
-      setTimeout(() => (button.textContent = old), 900);
-    };
-
     function render() {
       const f = F();
       const q = f.q.toLowerCase();
@@ -110,38 +118,28 @@ const total = sessions.filter((s) => s.hasTranscript).length;
       const visible = state.expanded ? list : list.slice(0, PREVIEW);
       rowsEl.replaceChildren(
         ...visible.map((s) => {
-          const li = document.createElement("li");
-          li.className = "session-row";
-          li.innerHTML = `
-            <div class="row-body">
-              <h3><a href="/sessions/${s.id}/"></a></h3>
-              <p class="meta">WWDC${String(s.y).slice(2)} · ${Math.round(s.d / 60)} min</p>
-            </div>
-            <span class="row-leader" aria-hidden="true"></span>
-            <span class="row-actions"></span>`;
-          li.querySelector("a").textContent = s.t;
-          const actions = li.querySelector(".row-actions");
-          const mk = (label, fn, title) => {
+          const tr = document.createElement("tr");
+          const topic = topicMeta.get(s.p ?? s.k[0]);
+          tr.innerHTML = `
+            <td class="num mono-id">${s.id.split("-")[1] ?? s.id}</td>
+            <td><a href="/sessions/${s.id}/"></a></td>
+            <td>${topic?.glyph ? `<img class="topic-glyph" src="${topic.glyph}" alt="${topic.title}" title="${topic.title}" width="18" height="18" loading="lazy">` : ""}</td>
+            <td class="mono-id">’${String(s.y).slice(2)}</td>
+            <td class="num">${Math.round(s.d / 60)}</td>
+            <td class="dl"></td>
+            <td class="dl"></td>`;
+          tr.querySelector("a").textContent = s.t;
+          const cells = tr.querySelectorAll(".dl");
+          [["srt", "Download subtitles"], ["txt", "Download plain text"]].forEach(([kind, title], i) => {
             const b = document.createElement("button");
             b.type = "button";
             b.className = "chip";
-            b.textContent = label;
-            if (title) b.title = title;
-            b.addEventListener("click", fn);
-            actions.append(b);
-          };
-          mk(".srt", (e) => download(s, "srt", e.currentTarget), "Download subtitles");
-          mk(".txt", (e) => download(s, "txt", e.currentTarget), "Download plain text");
-          mk("copy id", (e) => copy(s.id, e.currentTarget));
-          mk("copy url", (e) => copy(s.u, e.currentTarget), "Copy session URL");
-          const a = document.createElement("a");
-          a.className = "chip";
-          a.href = s.u;
-          a.rel = "external";
-          a.textContent = "↗";
-          a.title = "Open at developer.apple.com";
-          actions.append(a);
-          return li;
+            b.textContent = `↓ .${kind}`;
+            b.title = title;
+            b.addEventListener("click", (e) => download(s, kind, e.currentTarget));
+            cells[i].append(b);
+          });
+          return tr;
         })
       );
       moreEl.hidden = state.expanded || list.length <= PREVIEW;
@@ -168,16 +166,24 @@ const total = sessions.filter((s) => s.hasTranscript).length;
     min-inline-size: 16rem;
   }
 
-  .row-actions {
-    display: flex;
-    gap: 0.3rem;
-    flex: none;
-    align-items: center;
+  .mono-id {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-soft);
   }
 
-  .row-actions .chip {
+  td.dl .chip {
     font-size: 0.66rem;
     padding: 0.18rem 0.5rem;
+  }
+
+  table[data-dh-reactive] td a {
     text-decoration: none;
+    color: var(--ink);
+    font-weight: 560;
+  }
+
+  table[data-dh-reactive] td a:hover {
+    color: var(--oxblood);
   }
 </style>
