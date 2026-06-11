@@ -1,0 +1,6 @@
+{
+  "comment": "Feed configuration. The real registry lives outside this repo: copy this file to data/endpoints.json and fill in the current environment of Apple's Developer-app feed. The data belongs to Apple; this repo only ships the code that reads it.",
+  "cdnBase": "https://devimages-cdn.apple.com/wwdc-services",
+  "current": "<environment-token>/<uuid>",
+  "environments": []
+}

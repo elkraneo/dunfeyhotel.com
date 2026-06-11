@@ -13,7 +13,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const registry = JSON.parse(await readFile(join(here, "endpoints.json"), "utf8"));
+let registry;
+try {
+  registry = JSON.parse(await readFile(join(here, "..", "data", "endpoints.json"), "utf8"));
+} catch {
+  console.error("No feed configuration. Copy etl/endpoints.example.json to data/endpoints.json and fill in the current environment (see README).");
+  process.exit(1);
+}
 
 const envArg = process.argv.indexOf("--env");
 const token = envArg !== -1 ? process.argv[envArg + 1] : registry.current;
