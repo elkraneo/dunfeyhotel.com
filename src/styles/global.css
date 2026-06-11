@@ -193,11 +193,21 @@ h3 {
 .masthead nav {
   margin-left: auto;
   display: flex;
-  gap: 1.2rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.1rem;
   font-family: var(--font-mono);
   font-size: 0.78rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .masthead nav {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
 }
 
 main {
