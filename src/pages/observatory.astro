@@ -60,6 +60,10 @@ import Base from "../layouts/Base.astro";
     <h2 class="kicker" id="cross-section">Cross-section</h2>
     <div class="cross-controls">
       <div class="chip-row" role="group" aria-label="Collect as" id="kind-chips"></div>
+      <div class="chip-row" role="group" aria-label="Display" id="view-chips">
+        <button type="button" class="chip" data-view="list" aria-pressed="true">List</button>
+        <button type="button" class="chip" data-view="grid" aria-pressed="false">Grid</button>
+      </div>
       <label class="meta" for="cross-sort">
         Sort
         <select id="cross-sort" class="theme-select"></select>
@@ -160,6 +164,7 @@ import Base from "../layouts/Base.astro";
       measure: MEASURES[params.get("measure")] ? params.get("measure") : "sessions",
       kind: KINDS.some((k) => k.key === params.get("kind")) ? params.get("kind") : "sessions",
       sort: params.get("sort"),
+      view: params.get("view") === "grid" ? "grid" : "list",
       expanded: false,
     };
     const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
@@ -173,6 +178,7 @@ import Base from "../layouts/Base.astro";
       state.measure !== "sessions" ? p.set("measure", state.measure) : p.delete("measure");
       state.kind !== "sessions" ? p.set("kind", state.kind) : p.delete("kind");
       state.sort ? p.set("sort", state.sort) : p.delete("sort");
+      state.view === "grid" ? p.set("view", "grid") : p.delete("view");
       history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
     }
 
@@ -217,6 +223,14 @@ import Base from "../layouts/Base.astro";
       b.dataset.kind = k.key;
       kindChips.append(b);
     }
+
+    const viewChips = document.getElementById("view-chips");
+    viewChips.querySelectorAll(".chip").forEach((b) =>
+      b.addEventListener("click", () => {
+        state.view = b.dataset.view;
+        render();
+      })
+    );
 
     const sortSelect = document.getElementById("cross-sort");
     sortSelect.addEventListener("change", () => {
@@ -306,27 +320,39 @@ import Base from "../layouts/Base.astro";
       kindChips.querySelectorAll(".chip").forEach((b) =>
         b.setAttribute("aria-pressed", String(b.dataset.kind === state.kind))
       );
+      viewChips.hidden = state.kind !== "sessions";
+      viewChips.querySelectorAll(".chip").forEach((b) =>
+        b.setAttribute("aria-pressed", String(b.dataset.view === state.view))
+      );
 
       const sortFn = syncSortOptions();
       if (state.kind === "sessions") {
         const list = [...matched].sort(sortFn);
         const visible = state.expanded ? list : list.slice(0, PREVIEW);
         summary.textContent = `${list.length} sessions matching any active topic${yearScope() ? ` · ${yearScope()}` : ""}`;
-        const rows = document.createElement("ul");
-        rows.className = "session-rows";
+        const grid = state.view === "grid";
+        const rows = document.createElement(grid ? "div" : "ul");
+        rows.className = grid ? "gcards" : "session-rows";
         visible.forEach((s, i) => {
-          const row = document.createElement("li");
-          row.className = "session-row appear";
-          row.style.animationDelay = `${Math.min(i * 22, 440)}ms`;
           const snips = s.c ? ` · ${s.c} ${s.c === 1 ? "snippet" : "snippets"}` : "";
-          row.innerHTML = `
-            ${s.img ? `<img class="row-thumb" src="${s.img}" alt="" loading="lazy" width="104" height="59" onerror="this.remove()">` : ""}
-            <div class="row-body">
+          const row = document.createElement(grid ? "div" : "li");
+          row.className = (grid ? "gcard" : "session-row") + " appear";
+          row.style.animationDelay = `${Math.min(i * 22, 440)}ms`;
+          if (grid) {
+            row.innerHTML = `
+              ${s.img ? `<img class="gcard-thumb" src="${s.img}" alt="" loading="lazy" width="250" height="141" onerror="this.remove()">` : ""}
               <h3><a href="/sessions/${s.id}/"></a></h3>
-              <p class="meta">${yearLabel(s.y)}${snips}</p>
-            </div>
-            <span class="row-leader" aria-hidden="true"></span>
-            <span class="row-duration">${minutes(s.d)}</span>`;
+              <p class="meta">${yearLabel(s.y)} · ${minutes(s.d)}${snips}</p>`;
+          } else {
+            row.innerHTML = `
+              ${s.img ? `<img class="row-thumb" src="${s.img}" alt="" loading="lazy" width="104" height="59" onerror="this.remove()">` : ""}
+              <div class="row-body">
+                <h3><a href="/sessions/${s.id}/"></a></h3>
+                <p class="meta">${yearLabel(s.y)}${snips}</p>
+              </div>
+              <span class="row-leader" aria-hidden="true"></span>
+              <span class="row-duration">${minutes(s.d)}</span>`;
+          }
           row.querySelector("a").textContent = s.t;
           rows.append(row);
         });
@@ -464,13 +490,20 @@ import Base from "../layouts/Base.astro";
         })
       );
 
-      // C · topic lines across years
-      const lineData = cells.map((c) => ({
-        year: c.year,
-        topic: topicTitle.get(c.topicId) ?? "—",
-        id: c.topicId,
-        value: m.of(c),
-      }));
+      // C · topic lines across years — the year selection narrows the span.
+      const sel = F().years.size ? [...F().years].sort((a, b) => a - b) : null;
+      const yMin = sel ? sel[0] : years[0];
+      const yMax = sel ? sel.at(-1) : years.at(-1);
+      const spanYears = years.filter((y) => y >= yMin && y <= yMax);
+      const single = yMin === yMax;
+      const lineData = cells
+        .filter((c) => c.year >= yMin && c.year <= yMax)
+        .map((c) => ({
+          year: c.year,
+          topic: topicTitle.get(c.topicId) ?? "—",
+          id: c.topicId,
+          value: m.of(c),
+        }));
       document.getElementById("caption-lines").textContent =
         `${m.label} per primary topic across years`;
       dataTable(
@@ -496,7 +529,12 @@ import Base from "../layouts/Base.astro";
           height: 340,
           marginLeft: 46,
           style: { fontSize: "12.5px" },
-          x: { tickFormat: shortYear, label: null, ticks: years },
+          x: {
+            tickFormat: shortYear,
+            label: null,
+            ticks: spanYears,
+            domain: single ? [yMin - 0.5, yMax + 0.5] : [yMin, yMax],
+          },
           y: { label: m.label, grid: true, nice: true },
           marks: [
             F().years.size
@@ -519,19 +557,30 @@ import Base from "../layouts/Base.astro";
               tip: { format: { x: (y) => yearLabel(y) } },
               channels: { topic: "topic" },
             }),
-            // One glyph at each line's end as identifier — every point was
-            // noise. Black line art, so skipped on the dark theme.
-            document.documentElement.dataset.theme !== "night"
+            // One glyph at each line's end as identifier; endpoints are
+            // nudged apart so they never stack. Black line art, so skipped
+            // on dark themes.
+            !(document.documentElement.dataset.theme ?? "").includes("night")
               ? Plot.image(
-                  Object.values(
-                    lineData.reduce((acc, d) => {
-                      if (!acc[d.id] || d.year > acc[d.id].year) acc[d.id] = d;
-                      return acc;
-                    }, {})
-                  ),
+                  (() => {
+                    const ends = Object.values(
+                      lineData.reduce((acc, d) => {
+                        if (!acc[d.id] || d.year > acc[d.id].year) acc[d.id] = { ...d };
+                        return acc;
+                      }, {})
+                    ).sort((a, b) => a.value - b.value);
+                    const maxVal = Math.max(1, ...lineData.map((d) => d.value));
+                    const sep = (maxVal * 17) / 280; // ≈17px in data units
+                    let prev = -Infinity;
+                    for (const e of ends) {
+                      e.iconY = Math.max(e.value, prev + sep);
+                      prev = e.iconY;
+                    }
+                    return ends;
+                  })(),
                   {
                     x: "year",
-                    y: "value",
+                    y: "iconY",
                     src: (d) => topicGlyph.get(d.id),
                     width: 15,
                     height: 15,

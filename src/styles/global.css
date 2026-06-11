@@ -1068,3 +1068,40 @@ ul.plain li {
 [hidden] {
   display: none !important;
 }
+
+/* ————— cross-section grid view ————— */
+
+.gcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  gap: 1.1rem 1.4rem;
+}
+
+.gcard h3 {
+  font-size: 0.98rem;
+  font-weight: 560;
+  margin: 0.45rem 0 0.15rem;
+}
+
+.gcard a {
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.gcard a:hover {
+  color: var(--oxblood);
+}
+
+.gcard .meta {
+  margin: 0;
+}
+
+.gcard-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-s);
+  filter: var(--thumb-filter);
+  display: block;
+}
