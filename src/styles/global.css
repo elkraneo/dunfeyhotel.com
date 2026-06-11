@@ -58,6 +58,8 @@
 /* Theme: Cupertino — minimal, efficient, systemic */
 [data-theme="cupertino"] {
   --radius-control: 999px;
+  --radius-bar: 999px;
+  --radius-bar-svg: 3px;
   --radius-input: 10px;
   --radius-s: 8px;
   --radius-m: 12px;
@@ -85,6 +87,8 @@
 /* Theme: Cupertino Night */
 [data-theme="cupertino-night"] {
   --radius-control: 999px;
+  --radius-bar: 999px;
+  --radius-bar-svg: 3px;
   --radius-input: 10px;
   --radius-s: 8px;
   --radius-m: 12px;
@@ -364,6 +368,7 @@ main {
 }
 
 .bar {
+  border-radius: var(--radius-bar, 0);
   display: inline-block;
   block-size: 0.62em;
   background: var(--oxblood);
@@ -525,6 +530,7 @@ h3.kicker {
 
 .spark-bar {
   fill: var(--oxblood);
+  rx: var(--radius-bar-svg, 0);
 }
 
 .spark-bar.is-empty {

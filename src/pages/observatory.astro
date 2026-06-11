@@ -176,6 +176,8 @@ import Base from "../layouts/Base.astro";
       history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
     }
 
+    const barRx = () =>
+      (document.documentElement.dataset.theme ?? "").startsWith("cupertino") ? 4 : 0;
     const css = (name) =>
       getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     const fmt = (n) => Math.round(n).toLocaleString("en");
@@ -409,6 +411,7 @@ import Base from "../layouts/Base.astro";
             Plot.barY(perYear, {
               x: "year",
               y: "value",
+              rx: barRx(),
               fill: (d) => (yearIn(d.year) ? css("--oxblood") : css("--bar-muted")),
               tip: tipYear,
             }),
@@ -452,6 +455,7 @@ import Base from "../layouts/Base.astro";
             Plot.barX(perTopic, {
               x: "value",
               y: "topic",
+              rx: barRx(),
               sort: { y: "-x" },
               fill: (d) => topicColor.get(d.id),
               tip: true,
