@@ -29,16 +29,28 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
       ))}
     </p>
     <header class="session-head">
-      {s.thumb && (
-        <img
-          class="session-art"
-          src={s.ogImage ?? s.thumb}
-          alt=""
-          width="450"
-          height="253"
-          loading="eager"
-          onerror="this.remove()"
-        />
+      {s.youtubeId ? (
+        <div class="yt-embed">
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${s.youtubeId}`}
+            title={`Watch: ${s.title}`}
+            loading="lazy"
+            allow="encrypted-media; picture-in-picture; fullscreen"
+            allowfullscreen
+          ></iframe>
+        </div>
+      ) : (
+        s.thumb && (
+          <img
+            class="session-art"
+            src={s.ogImage ?? s.thumb}
+            alt=""
+            width="450"
+            height="253"
+            loading="eager"
+            onerror="this.remove()"
+          />
+        )
       )}
       <p class="kicker">
         <a href={`/years/${s.year}/`}>WWDC{String(s.year).slice(2)}</a> ·

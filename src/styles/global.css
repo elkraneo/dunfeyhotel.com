@@ -27,6 +27,12 @@
 
   --measure: 64ch;
   --gutter: clamp(1.25rem, 4vw, 3rem);
+
+  --radius-control: 0;
+  --radius-input: 2px;
+  --radius-s: 0;
+  --radius-m: 0;
+  --radius-plaque: 3px;
 }
 
 /* Theme: Night Audit — the hotel after midnight */
@@ -51,6 +57,11 @@
 
 /* Theme: Cupertino — minimal, efficient, systemic */
 [data-theme="cupertino"] {
+  --radius-control: 999px;
+  --radius-input: 10px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-plaque: 8px;
   --paper: #ffffff;
   --paper-deep: #f5f5f7;
   --ink: #1d1d1f;
@@ -73,6 +84,11 @@
 
 /* Theme: Cupertino Night */
 [data-theme="cupertino-night"] {
+  --radius-control: 999px;
+  --radius-input: 10px;
+  --radius-s: 8px;
+  --radius-m: 12px;
+  --radius-plaque: 8px;
   --paper: #161617;
   --paper-deep: #232325;
   --ink: #f5f5f7;
@@ -412,6 +428,7 @@ main {
 }
 
 .row-thumb {
+  border-radius: var(--radius-s);
   inline-size: 104px;
   block-size: 59px;
   object-fit: cover;
@@ -472,6 +489,7 @@ main {
 }
 
 .session-art {
+  border-radius: var(--radius-m);
   display: block;
   max-width: 28rem;
   width: 100%;
@@ -480,6 +498,23 @@ main {
   box-shadow: 0.4rem 0.4rem 0 var(--paper-deep);
   margin-block-end: 1.2rem;
   filter: var(--thumb-filter);
+}
+
+.yt-embed {
+  max-width: 40rem;
+  aspect-ratio: 16 / 9;
+  margin-block-end: 1.2rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-m);
+  overflow: hidden;
+  box-shadow: 0.4rem 0.4rem 0 var(--paper-deep);
+}
+
+.yt-embed iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
 }
 
 h2.kicker,
@@ -497,6 +532,7 @@ h3.kicker {
 }
 
 .theme-select {
+  border-radius: var(--radius-input);
   font-family: var(--font-mono);
   font-size: 0.72rem;
   letter-spacing: 0.06em;
@@ -646,12 +682,12 @@ h3.kicker {
 }
 
 .filter-input {
+  border-radius: var(--radius-input);
   font-family: var(--font-display);
   font-size: 0.95rem;
   color: var(--ink);
   background: var(--paper);
   border: 1px solid var(--rule-strong);
-  border-radius: 2px;
   padding: 0.4rem 0.7rem;
   min-inline-size: 16rem;
 }
@@ -716,7 +752,7 @@ h3.kicker {
 
 /* Topics are plaques: rectangular, mounted on their category color. */
 .chip.topic {
-  border-radius: 3px;
+  border-radius: var(--radius-plaque);
   border-inline-start: 4px solid var(--chip-color, var(--rule-strong));
   padding-inline-start: 0.5rem;
 }
@@ -762,6 +798,7 @@ h3.kicker {
 }
 
 .watch {
+  border-radius: var(--radius-control);
   display: inline-block;
   font-family: var(--font-mono);
   font-size: 0.8rem;
@@ -861,6 +898,11 @@ section.block {
   font-size: 0.72rem;
   color: var(--ink-soft);
   margin-left: 0.5rem;
+}
+
+.snippet {
+  border-radius: var(--radius-m);
+  overflow: hidden;
 }
 
 /* Code is always set in the dark room, whatever the theme. */

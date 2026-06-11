@@ -31,6 +31,12 @@ if (!snapName) throw new Error("No raw snapshot found. Run fetch.mjs first.");
 const snapDir = join(rawRoot, snapName);
 
 const contents = JSON.parse(await readFile(join(snapDir, "contents.json"), "utf8"));
+
+// Apple's official YouTube uploads (built by etl/youtube.mjs, committed).
+let youtubeMap = {};
+try {
+  youtubeMap = JSON.parse(await readFile(join(here, "youtube-map.json"), "utf8"));
+} catch {}
 let transcriptIds = new Set();
 let transcriptUrls = new Map();
 try {
@@ -106,6 +112,7 @@ const sessions = contents.contents
     ogImage: artwork(c, "900x506"),
     hasTranscript: transcriptIds.has(c.id),
     transcriptUrl: transcriptUrls.get(c.id) ?? null,
+    youtubeId: youtubeMap[c.id] ?? null,
     chapters: c.media?.chapters ?? [],
     codeSnippets: (c.codeSnippets ?? []).map((s) => ({
       title: s.title,
