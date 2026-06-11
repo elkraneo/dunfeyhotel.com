@@ -1057,3 +1057,8 @@ ul.plain li {
   font-size: 0.66rem;
   padding: 0.18rem 0.5rem;
 }
+
+/* The hidden attribute always wins, whatever display the class sets. */
+[hidden] {
+  display: none !important;
+}
