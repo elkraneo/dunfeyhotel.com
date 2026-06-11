@@ -2,6 +2,7 @@
 // Auto-generated per-year document catalog: every resource referenced by that
 // year's sessions, grouped by the referencing sessions' topics. A resource
 // can appear under several topics, mirroring how sessions cite it.
+import ResourceIcon from "../../../components/ResourceIcon.astro";
 import Base from "../../../layouts/Base.astro";
 import {
   events,
@@ -78,7 +79,7 @@ const total = new Set(
       <ul class="plain">
         {g.items.map(({ resource: r, referencedBy }) => (
           <li>
-            <span class="meta">[{r.type}]</span>{" "}
+            <ResourceIcon type={r.type} />{" "}
             <a href={r.url} rel="external"><strong>{r.title}</strong></a>
             {r.description && <> — {r.description}</>}
             <span class="meta">

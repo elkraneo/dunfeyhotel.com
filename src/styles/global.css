@@ -1120,3 +1120,13 @@ ul.plain li {
 .plot [aria-label="tip"] tspan {
   fill: var(--ink);
 }
+
+.res-icon {
+  display: inline-flex;
+  vertical-align: -0.15em;
+  color: var(--brass);
+}
+
+td.res-type {
+  white-space: nowrap;
+}

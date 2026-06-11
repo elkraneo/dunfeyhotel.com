@@ -46,14 +46,7 @@ const total = resources.length;
   <script>
     import allResources from "../../data/normalized/resources.json";
     import index from "../../data/normalized/observatory-index.json";
-
-    const TYPE_LABELS = {
-      samplecode: "Sample code",
-      documentation: "Documentation",
-      guide: "Guide",
-      developerForum: "Forum",
-      download: "Download",
-    };
+    import { RESOURCE_ICONS, TYPE_LABELS } from "../lib/resource-icons.js";
     const sessionMeta = new Map(index.sessions.map((s) => [s.id, s]));
 
     const all = allResources
@@ -74,7 +67,11 @@ const total = resources.length;
       const b = document.createElement("button");
       b.type = "button";
       b.className = "chip";
-      b.textContent = t === null ? "All" : (TYPE_LABELS[t] ?? t);
+      if (t === null) b.textContent = "All";
+      else {
+        b.innerHTML = RESOURCE_ICONS[t] ?? "";
+        b.append(` ${TYPE_LABELS[t] ?? t}`);
+      }
       b.addEventListener("click", () => {
         state.type = t;
         state.expanded = false;
@@ -124,8 +121,8 @@ const total = resources.length;
         ...visible.map((r) => {
           const tr = document.createElement("tr");
           const typeCell = document.createElement("td");
-          typeCell.className = "mono-id";
-          typeCell.textContent = TYPE_LABELS[r.type] ?? r.type;
+          typeCell.className = "mono-id res-type";
+          typeCell.innerHTML = `<span class="res-icon" title="${TYPE_LABELS[r.type] ?? r.type}">${RESOURCE_ICONS[r.type] ?? ""}</span> ${TYPE_LABELS[r.type] ?? r.type}`;
           const resCell = document.createElement("td");
           const link = document.createElement("a");
           link.href = r.url;

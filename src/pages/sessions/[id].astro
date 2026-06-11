@@ -1,4 +1,5 @@
 ---
+import ResourceIcon from "../../components/ResourceIcon.astro";
 import SessionCard from "../../components/SessionCard.astro";
 import Base from "../../layouts/Base.astro";
 import {
@@ -132,7 +133,7 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
         <ul class="plain">
           {res.map((r) => (
             <li>
-              <span class="meta">[{r.type}]</span>{" "}
+              <ResourceIcon type={r.type} />{" "}
               <a href={r.url} rel="external">{r.title}</a>
             </li>
           ))}

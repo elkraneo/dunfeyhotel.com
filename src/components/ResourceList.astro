@@ -2,6 +2,7 @@
 // Live resource list for dispatches: resources referenced by sessions of a
 // given year and/or topic, with descriptions and back-links.
 import { sessions, resourceById, topicBySlug } from "../lib/data.js";
+import ResourceIcon from "./ResourceIcon.astro";
 
 const { year, topic, types } = Astro.props;
 const t = topic ? topicBySlug.get(topic) : null;
@@ -31,7 +32,7 @@ const list = [...seen.values()].sort((a, b) =>
 <ul class="plain">
   {list.map(({ resource: r, referencedBy }) => (
     <li>
-      <span class="meta">[{r.type}]</span>{" "}
+      <ResourceIcon type={r.type} />{" "}
       <a href={r.url} rel="external"><strong>{r.title}</strong></a>
       {r.description && <> — {r.description}</>}
       <span class="meta">
