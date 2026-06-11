@@ -29,6 +29,8 @@ jobs:
       - name: Fetch snapshot (a 403 here likely means Apple rotated the feed environment)
         run: node etl/fetch.mjs
 
+      - run: node etl/normalize.mjs
+
       - run: node etl/transcripts-cache.mjs
 
       - name: Refresh YouTube map (non-fatal — datacenter IPs are sometimes blocked)
@@ -36,6 +38,7 @@ jobs:
           pipx install yt-dlp
           node etl/youtube.mjs || echo "::warning::YouTube refresh skipped"
 
+      # Re-normalize so any new YouTube ids land in the dataset.
       - run: node etl/normalize.mjs
 
       - run: npm run build
