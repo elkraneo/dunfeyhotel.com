@@ -33,10 +33,14 @@
   --radius-s: 0;
   --radius-m: 0;
   --radius-plaque: 3px;
+  --glyph-filter: none;
+  --glyph-filter-pressed: invert(1);
 }
 
 /* Theme: Night Audit — the hotel after midnight */
 [data-theme="night"] {
+  --glyph-filter: invert(1);
+  --glyph-filter-pressed: none;
   --paper: #181410;
   --paper-deep: #241e17;
   --ink: #ece2cd;
@@ -86,6 +90,8 @@
 
 /* Theme: Cupertino Night */
 [data-theme="cupertino-night"] {
+  --glyph-filter: invert(1);
+  --glyph-filter-pressed: none;
   --radius-control: 999px;
   --radius-bar: 999px;
   --radius-bar-svg: 3px;
@@ -616,6 +622,7 @@ h3.kicker {
 
 .chip img {
   display: inline-block;
+  filter: var(--glyph-filter);
 }
 
 .chip[aria-pressed="true"] {
@@ -625,7 +632,7 @@ h3.kicker {
 }
 
 .chip[aria-pressed="true"] img {
-  filter: invert(1);
+  filter: var(--glyph-filter-pressed);
 }
 
 .chip.topic[aria-pressed="true"] {
@@ -867,6 +874,7 @@ h3.kicker {
   block-size: 18px;
   vertical-align: -0.28em;
   opacity: 0.95;
+  filter: var(--glyph-filter);
 }
 
 .linkchip {
