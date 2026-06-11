@@ -1123,7 +1123,9 @@ ul.plain li {
 
 .res-icon {
   display: inline-flex;
-  vertical-align: -0.15em;
+  align-items: center;
+  vertical-align: -0.125em;
+  margin-inline-end: 0.15rem;
   color: var(--brass);
 }
 
