@@ -1,0 +1,31 @@
+---
+// Live session list for dispatches: filter by year and/or topic slug.
+import {
+  sessions,
+  topicBySlug,
+  formatDuration,
+} from "../lib/data.js";
+
+const { year, topic, limit } = Astro.props;
+const t = topic ? topicBySlug.get(topic) : null;
+
+let list = sessions.filter(
+  (s) =>
+    (year === undefined || s.year === year) &&
+    (!t || s.topicIds.includes(t.id))
+);
+list.sort((a, b) => (b.duration ?? 0) - (a.duration ?? 0));
+if (limit) list = list.slice(0, limit);
+---
+
+<div class="card-grid">
+  {list.map((s) => (
+    <div class="card">
+      <p class="meta">
+        WWDC{String(s.year).slice(2)} · {formatDuration(s.duration)}
+        {s.codeSnippets.length > 0 && ` · ${s.codeSnippets.length} snippets`}
+      </p>
+      <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
+    </div>
+  ))}
+</div>

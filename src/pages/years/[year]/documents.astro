@@ -1,0 +1,97 @@
+---
+// Auto-generated per-year document catalog: every resource referenced by that
+// year's sessions, grouped by the referencing sessions' topics. A resource
+// can appear under several topics, mirroring how sessions cite it.
+import Base from "../../../layouts/Base.astro";
+import {
+  events,
+  sessions,
+  resourceById,
+  topics,
+  topicSlug,
+} from "../../../lib/data.js";
+
+export function getStaticPaths() {
+  return events.map((e) => ({ params: { year: String(e.year) }, props: { event: e } }));
+}
+
+const { event } = Astro.props;
+const year = event.year;
+const yearSessions = sessions.filter((s) => s.year === year);
+
+const byTopic = topics
+  .map((t) => {
+    const seen = new Map();
+    for (const s of yearSessions) {
+      if (!s.topicIds.includes(t.id)) continue;
+      for (const rid of s.resourceIds) {
+        const r = resourceById.get(rid);
+        if (!r) continue;
+        const entry = seen.get(rid) ?? { resource: r, referencedBy: [] };
+        entry.referencedBy.push(s);
+        seen.set(rid, entry);
+      }
+    }
+    return {
+      topic: t,
+      items: [...seen.values()].sort((a, b) =>
+        (a.resource.title ?? "").localeCompare(b.resource.title ?? "")
+      ),
+    };
+  })
+  .filter((g) => g.items.length);
+
+const total = new Set(
+  byTopic.flatMap((g) => g.items.map((i) => i.resource.id))
+).size;
+---
+
+<Base
+  title={`${event.name} related documents`}
+  description={`All ${total} documents, sample code projects and downloads referenced at ${event.name}, grouped by topic.`}
+>
+  <section class="hero">
+    <p class="kicker"><a href={`/years/${year}/`}>{event.name}</a> · generated catalog</p>
+    <h1>{event.name} related documents</h1>
+    <p class="lede">
+      The {total} documents, sample projects, guides and downloads referenced
+      by {event.name} sessions, grouped by topic. Also available as
+      <a href={`/years/${year}/documents.tsv`}>raw TSV</a> for humans and agents.
+    </p>
+  </section>
+
+  <nav aria-label="Topics in this catalog">
+    <p class="meta">
+      {byTopic.map((g, i) => (
+        <>
+          {i > 0 && " · "}
+          <a href={`#${topicSlug(g.topic.title)}`}>{g.topic.title}</a>
+        </>
+      ))}
+    </p>
+  </nav>
+
+  {byTopic.map((g) => (
+    <section class="block" id={topicSlug(g.topic.title)}>
+      <p class="kicker">{g.topic.title} · {g.items.length}</p>
+      <ul class="plain">
+        {g.items.map(({ resource: r, referencedBy }) => (
+          <li>
+            <span class="meta">[{r.type}]</span>{" "}
+            <a href={r.url} rel="external"><strong>{r.title}</strong></a>
+            {r.description && <> — {r.description}</>}
+            <span class="meta">
+              {" · in "}
+              {referencedBy.map((s, i) => (
+                <>
+                  {i > 0 && ", "}
+                  <a href={`/sessions/${s.id}/`} title={s.title}>§{s.id.split("-")[1]}</a>
+                </>
+              ))}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+</Base>

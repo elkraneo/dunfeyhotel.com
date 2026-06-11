@@ -104,6 +104,7 @@ const resources = (contents.resources ?? []).map((r) => ({
   id: r.id,
   type: r.resource_type ?? r.resourceType ?? null,
   title: r.title ?? null,
+  description: r.description ?? null,
   url: r.url ?? null,
   sessionIds: sessionsByResource.get(r.id) ?? [],
 }));
@@ -138,6 +139,51 @@ const aggregates = {
   topicYearMatrix,
 };
 
+// Compact dataset for the client-side observatory (coordinated explorable
+// views). Sessions are attributed to their primary topic to avoid double
+// counting; resources to the year they were first referenced by a session.
+const cells = new Map();
+for (const s of sessions) {
+  const key = `${s.year}:${s.primaryTopicId ?? 0}`;
+  const cell = cells.get(key) ?? {
+    year: s.year,
+    topicId: s.primaryTopicId ?? 0,
+    sessions: 0,
+    seconds: 0,
+    snippets: 0,
+  };
+  cell.sessions += 1;
+  cell.seconds += s.duration ?? 0;
+  cell.snippets += s.codeSnippets.length;
+  cells.set(key, cell);
+}
+
+const resourceFirstYear = new Map();
+for (const s of sessions) {
+  for (const rid of s.resourceIds) {
+    const y = resourceFirstYear.get(rid);
+    if (!y || s.year < y) resourceFirstYear.set(rid, s.year);
+  }
+}
+const resourceCells = new Map();
+for (const r of resources) {
+  const year = resourceFirstYear.get(r.id);
+  if (!year || !r.type) continue;
+  const key = `${year}:${r.type}`;
+  resourceCells.set(key, (resourceCells.get(key) ?? 0) + 1);
+}
+
+const explorer = {
+  snapshotId: contents.snapshotId,
+  years,
+  topics,
+  sessionCells: [...cells.values()],
+  resourceCells: [...resourceCells.entries()].map(([key, count]) => {
+    const [year, type] = key.split(":");
+    return { year: Number(year), type, count };
+  }),
+};
+
 await mkdir(outDir, { recursive: true });
 const write = (name, data) => writeFile(join(outDir, name), JSON.stringify(data, null, 1));
 await write("events.json", events);
@@ -145,6 +191,7 @@ await write("topics.json", topics);
 await write("sessions.json", sessions);
 await write("resources.json", resources);
 await write("aggregates.json", aggregates);
+await write("explorer.json", explorer);
 
 console.log(`Normalized ${snapName}:`);
 console.log(`  ${events.length} events, ${topics.length} topics, ${sessions.length} talks, ${resources.length} resources`);

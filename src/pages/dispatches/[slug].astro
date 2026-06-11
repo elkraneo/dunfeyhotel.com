@@ -1,0 +1,57 @@
+---
+import { getCollection, render } from "astro:content";
+import Base from "../../layouts/Base.astro";
+
+export async function getStaticPaths() {
+  const dispatches = await getCollection("dispatches", ({ data }) => !data.draft);
+  return dispatches.map((d) => ({ params: { slug: d.id }, props: { dispatch: d } }));
+}
+
+const { dispatch } = Astro.props;
+const { Content } = await render(dispatch);
+const date = dispatch.data.date.toISOString().slice(0, 10);
+---
+
+<Base title={dispatch.data.title} description={dispatch.data.description}>
+  <article class="dispatch">
+    <header class="session-head">
+      <p class="kicker">Dispatch · {date}</p>
+      <h1>{dispatch.data.title}</h1>
+      <p class="lede">{dispatch.data.description}</p>
+    </header>
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+</Base>
+
+<style is:global>
+  .dispatch .prose {
+    max-width: var(--measure);
+    margin-block-start: 1.5rem;
+  }
+
+  .dispatch .prose h2 {
+    font-size: 1.45rem;
+    margin-block: 2.2rem 0.6rem;
+    border-top: 1px solid var(--rule-strong);
+    padding-top: 1rem;
+  }
+
+  .dispatch .prose h3 {
+    font-size: 1.1rem;
+    margin-block: 1.6rem 0.4rem;
+  }
+
+  .dispatch .prose .card-grid,
+  .dispatch .prose .figures {
+    margin-block: 1.2rem;
+  }
+
+  .dispatch .prose blockquote {
+    margin: 1.2rem 0;
+    padding-left: 1rem;
+    border-left: 3px solid var(--brass);
+    color: var(--ink-soft);
+  }
+</style>

@@ -1,0 +1,380 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Observatory"
+  description="Coordinated, explorable views of thirteen years of WWDC: sessions, hours, code and resources by topic and year."
+>
+  <section class="hero">
+    <p class="kicker">The observatory</p>
+    <h1>Correlate, don't just browse.</h1>
+    <p class="lede">
+      Pick a year, toggle topics, switch the measure — every panel answers
+      together. Counts use each talk's primary topic; resources are dated to
+      the year first referenced.
+    </p>
+  </section>
+
+  <div class="controls" role="group" aria-label="Observatory controls">
+    <fieldset class="lens">
+      <legend class="kicker">Measure</legend>
+      <label><input type="radio" name="measure" value="sessions" checked /> Sessions</label>
+      <label><input type="radio" name="measure" value="hours" /> Hours</label>
+      <label><input type="radio" name="measure" value="snippets" /> Code snippets</label>
+    </fieldset>
+    <div class="lens">
+      <p class="kicker" id="years-label">Year</p>
+      <div class="chip-row" role="group" aria-labelledby="years-label" id="year-chips"></div>
+    </div>
+    <div class="lens">
+      <p class="kicker" id="topics-label">
+        Topics · <button type="button" class="linkish" id="topics-all">all</button> ·
+        <button type="button" class="linkish" id="topics-none">none</button>
+      </p>
+      <div class="chip-row" role="group" aria-labelledby="topics-label" id="topic-chips"></div>
+    </div>
+  </div>
+
+  <div class="observatory-grid">
+    <figure class="panel" id="panel-years">
+      <figcaption class="kicker" id="caption-years"></figcaption>
+      <div class="plot" id="plot-years"></div>
+    </figure>
+    <figure class="panel" id="panel-distribution">
+      <figcaption class="kicker" id="caption-distribution"></figcaption>
+      <div class="plot" id="plot-distribution"></div>
+    </figure>
+    <figure class="panel wide" id="panel-lines">
+      <figcaption class="kicker" id="caption-lines"></figcaption>
+      <div class="plot" id="plot-lines"></div>
+    </figure>
+    <figure class="panel wide" id="panel-resources">
+      <figcaption class="kicker">Resources by year, first referenced</figcaption>
+      <div class="plot" id="plot-resources"></div>
+    </figure>
+  </div>
+
+  <p class="footnote">
+    Counts include talks only (videos and sessions). Years before 2019 reflect
+    the catalog Apple still publishes. Charts render with
+    <a href="https://observablehq.com/plot/">Observable Plot</a>.
+  </p>
+
+  <script>
+    import * as Plot from "@observablehq/plot";
+    import explorer from "../../data/normalized/explorer.json";
+
+    const { years, topics, sessionCells, resourceCells } = explorer;
+
+    // 19 topic hues tuned to the ledger palette.
+    const PALETTE = [
+      "#6e2228", "#93702a", "#3d5a3f", "#2f4b6e", "#7a4a21",
+      "#5b3a68", "#205e5a", "#8d2f36", "#576238", "#386083",
+      "#a04b18", "#44406e", "#226b45", "#703354", "#6b5d20",
+      "#2c5f73", "#84422c", "#4f5526", "#503e72",
+    ];
+    const topicColor = new Map(topics.map((t, i) => [t.id, PALETTE[i % PALETTE.length]]));
+    const topicTitle = new Map(topics.map((t) => [t.id, t.title]));
+
+    const MEASURES = {
+      sessions: { label: "sessions", of: (c) => c.sessions },
+      hours: { label: "hours", of: (c) => c.seconds / 3600 },
+      snippets: { label: "code snippets", of: (c) => c.snippets },
+    };
+
+    const state = {
+      measure: "sessions",
+      year: null,
+      active: new Set(topics.map((t) => t.id)),
+    };
+
+    const css = (name) =>
+      getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const fmt = (n) => Math.round(n).toLocaleString("en");
+
+    // ——— controls ———
+    const yearChips = document.getElementById("year-chips");
+    for (const y of [null, ...years]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = y === null ? "All" : `'${String(y).slice(2)}`;
+      b.setAttribute("aria-pressed", String(state.year === y));
+      b.addEventListener("click", () => {
+        state.year = y;
+        render();
+      });
+      b.dataset.year = y ?? "";
+      yearChips.append(b);
+    }
+
+    const topicChips = document.getElementById("topic-chips");
+    for (const t of topics) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip topic";
+      b.style.setProperty("--chip-color", topicColor.get(t.id));
+      b.textContent = t.title;
+      b.setAttribute("aria-pressed", "true");
+      b.addEventListener("click", () => {
+        state.active.has(t.id) ? state.active.delete(t.id) : state.active.add(t.id);
+        render();
+      });
+      b.dataset.topic = t.id;
+      topicChips.append(b);
+    }
+    document.getElementById("topics-all").addEventListener("click", () => {
+      state.active = new Set(topics.map((t) => t.id));
+      render();
+    });
+    document.getElementById("topics-none").addEventListener("click", () => {
+      state.active.clear();
+      render();
+    });
+
+    document.querySelectorAll('input[name="measure"]').forEach((input) =>
+      input.addEventListener("change", () => {
+        state.measure = input.value;
+        render();
+      })
+    );
+
+    // ——— rendering ———
+    const mount = (id, plot) => {
+      const el = document.getElementById(id);
+      el.replaceChildren(plot);
+    };
+
+    function render() {
+      const m = MEASURES[state.measure];
+      const cells = sessionCells.filter((c) => state.active.has(c.topicId));
+      const width = Math.min(640, document.getElementById("panel-years").clientWidth - 24);
+
+      yearChips.querySelectorAll(".chip").forEach((b) =>
+        b.setAttribute("aria-pressed", String((b.dataset.year || null) == (state.year ?? "") || (b.dataset.year === "" && state.year === null)))
+      );
+      topicChips.querySelectorAll(".chip").forEach((b) =>
+        b.setAttribute("aria-pressed", String(state.active.has(Number(b.dataset.topic))))
+      );
+
+      // A · measure per year
+      const perYear = years.map((year) => ({
+        year,
+        value: cells.filter((c) => c.year === year).reduce((n, c) => n + m.of(c), 0),
+      }));
+      const total = perYear.reduce((n, d) => n + d.value, 0);
+      document.getElementById("caption-years").textContent =
+        `${m.label} by year · ${fmt(state.year ? perYear.find((d) => d.year === state.year)?.value ?? 0 : total)} ${state.year ?? "total"}`;
+      mount(
+        "plot-years",
+        Plot.plot({
+          width,
+          height: 220,
+          marginLeft: 44,
+          x: { tickFormat: (y) => `'${String(y).slice(2)}`, label: null },
+          y: { label: m.label, grid: true },
+          marks: [
+            Plot.barY(perYear, {
+              x: "year",
+              y: "value",
+              fill: (d) => (state.year === null || d.year === state.year ? css("--oxblood") : css("--rule")),
+              tip: true,
+            }),
+          ],
+        })
+      );
+
+      // B · distribution across topics (selected year, or all years)
+      const scope = state.year ? cells.filter((c) => c.year === state.year) : cells;
+      const perTopic = topics
+        .filter((t) => state.active.has(t.id))
+        .map((t) => ({
+          topic: t.title,
+          id: t.id,
+          value: scope.filter((c) => c.topicId === t.id).reduce((n, c) => n + m.of(c), 0),
+        }))
+        .filter((d) => d.value > 0)
+        .sort((a, b) => b.value - a.value);
+      document.getElementById("caption-distribution").textContent =
+        `${m.label} by topic · ${state.year ?? "all years"}`;
+      mount(
+        "plot-distribution",
+        Plot.plot({
+          width,
+          height: Math.max(160, perTopic.length * 22 + 40),
+          marginLeft: 190,
+          x: { label: m.label, grid: true },
+          y: { label: null },
+          marks: [
+            Plot.barX(perTopic, {
+              x: "value",
+              y: "topic",
+              sort: { y: "-x" },
+              fill: (d) => topicColor.get(d.id),
+              tip: true,
+            }),
+          ],
+        })
+      );
+
+      // C · topic lines across years
+      const lineData = cells.map((c) => ({
+        year: c.year,
+        topic: topicTitle.get(c.topicId) ?? "—",
+        id: c.topicId,
+        value: m.of(c),
+      }));
+      document.getElementById("caption-lines").textContent = `${m.label} per topic across years`;
+      mount(
+        "plot-lines",
+        Plot.plot({
+          width: Math.min(1100, document.getElementById("panel-lines").clientWidth - 24),
+          height: 300,
+          marginLeft: 44,
+          x: { tickFormat: (y) => `'${String(y).slice(2)}`, label: null },
+          y: { label: m.label, grid: true },
+          marks: [
+            state.year ? Plot.ruleX([state.year], { stroke: css("--rule-strong") }) : null,
+            Plot.line(lineData, {
+              x: "year",
+              y: "value",
+              z: "topic",
+              stroke: (d) => topicColor.get(d.id),
+              curve: "monotone-x",
+            }),
+            Plot.dot(lineData, {
+              x: "year",
+              y: "value",
+              z: "topic",
+              fill: (d) => topicColor.get(d.id),
+              r: 2.5,
+              tip: true,
+              channels: { topic: "topic" },
+            }),
+          ].filter(Boolean),
+        })
+      );
+
+      // D · resources by type per year
+      mount(
+        "plot-resources",
+        Plot.plot({
+          width: Math.min(1100, document.getElementById("panel-resources").clientWidth - 24),
+          height: 260,
+          marginLeft: 44,
+          x: { tickFormat: (y) => `'${String(y).slice(2)}`, label: null },
+          y: { label: "resources", grid: true },
+          color: { legend: true, scheme: "Warm" },
+          marks: [
+            Plot.barY(resourceCells, {
+              x: "year",
+              y: "count",
+              fill: "type",
+              opacity: (d) => (state.year === null || d.year === state.year ? 1 : 0.25),
+              tip: true,
+            }),
+          ],
+        })
+      );
+    }
+
+    render();
+    let resizeTimer;
+    addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(render, 150);
+    });
+  </script>
+</Base>
+
+<style is:global>
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.4rem 2.5rem;
+    padding: 1rem 0 1.4rem;
+    border-bottom: 1px solid var(--rule-strong);
+    margin-bottom: 1.5rem;
+  }
+
+  .lens {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .lens legend {
+    padding: 0;
+  }
+
+  .lens label {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    margin-right: 1rem;
+  }
+
+  .linkish {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--oxblood);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    max-width: 46rem;
+  }
+
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    color: var(--ink-soft);
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    border-radius: 999px;
+  }
+
+  .chip[aria-pressed="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+
+  .chip.topic[aria-pressed="true"] {
+    background: var(--chip-color);
+    border-color: var(--chip-color);
+  }
+
+  .observatory-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: 1.5rem 2.5rem;
+  }
+
+  .panel {
+    margin: 0;
+    border-top: 2px solid var(--ink);
+    padding-top: 0.6rem;
+    min-width: 0;
+  }
+
+  .panel.wide {
+    grid-column: 1 / -1;
+  }
+
+  .panel .plot svg {
+    background: transparent !important;
+    font-family: var(--font-mono) !important;
+    font-size: 11px;
+  }
+</style>

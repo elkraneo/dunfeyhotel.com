@@ -1,0 +1,49 @@
+---
+import { getCollection } from "astro:content";
+import Base from "../../layouts/Base.astro";
+import { years } from "../../lib/data.js";
+
+const dispatches = (await getCollection("dispatches", ({ data }) => !data.draft)).sort(
+  (a, b) => b.data.date.valueOf() - a.data.date.valueOf()
+);
+---
+
+<Base title="Dispatches" description="Analyses and guides built on the WWDC dataset.">
+  <section class="hero">
+    <p class="kicker">Dispatches</p>
+    <h1>Analyses written on top of the ledger.</h1>
+    <p class="lede">
+      Guides and editorial pieces where the session lists, figures and document
+      catalogs are live queries against the dataset — they stay current as the
+      data updates.
+    </p>
+  </section>
+
+  <ul class="plain">
+    {dispatches.map((d) => (
+      <li>
+        <span class="meta">{d.data.date.toISOString().slice(0, 10)}</span>{" — "}
+        <a href={`/dispatches/${d.id}/`}><strong>{d.data.title}</strong></a>
+        <br />
+        {d.data.description}
+      </li>
+    ))}
+  </ul>
+
+  <section class="block">
+    <p class="kicker">Generated catalogs</p>
+    <p>
+      Every year also has an auto-generated document catalog — all resources
+      referenced that year, grouped by topic, with a TSV download:
+    </p>
+    <ul class="plain">
+      {[...years].reverse().map((y) => (
+        <li>
+          <a href={`/years/${y}/documents/`}>WWDC{String(y).slice(2)} related documents</a>
+          {" · "}
+          <a class="timestamp-link" href={`/years/${y}/documents.tsv`}>.tsv</a>
+        </li>
+      ))}
+    </ul>
+  </section>
+</Base>
