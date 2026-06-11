@@ -96,7 +96,6 @@ const crossSections = [
         placeholder={`Search ${totalTalks.toLocaleString("en")} sessions, their code and documents…`}
       />
       <button class="watch" type="submit">Search</button>
-      <a class="watch secondary" href="/observatory/">Or correlate in the observatory</a>
     </form>
     <div class="figures">
       <div class="figure"><b>{totalTalks.toLocaleString("en")}</b><span>talks</span></div>
@@ -205,5 +204,10 @@ const crossSections = [
         ))}
       </tbody>
     </table>
+    <p class="footnote">
+      Three-year windows because topics skip years — single-year deltas are
+      mostly noise. Any other range:
+      <a href="/observatory/">the observatory</a>.
+    </p>
   </section>
 </Base>

@@ -1,0 +1,209 @@
+---
+import Base from "../layouts/Base.astro";
+import { sessions } from "../lib/data.js";
+
+const total = sessions.filter((s) => s.hasTranscript).length;
+---
+
+<Base
+  title="Transcripts"
+  description={`Full transcripts for ${total.toLocaleString("en")} WWDC sessions — filter, then take them as .srt or plain text.`}
+>
+  <section class="hero">
+    <p class="kicker">The stenographer</p>
+    <h1>Transcripts.</h1>
+    <p class="lede">
+      {total.toLocaleString("en")} sessions with full text. Filter, then take
+      each as <code>.srt</code> or plain text — converted in your browser,
+      straight from Apple's source.
+    </p>
+  </section>
+
+  <div class="controls" role="group" aria-label="Transcript filters">
+    <div class="lens">
+      <label class="kicker" for="t-query">Filter</label>
+      <input id="t-query" type="search" class="filter-input" placeholder="Title or session id…" />
+    </div>
+    <div class="lens">
+      <p class="kicker" id="t-years-label">Year</p>
+      <div class="chip-row" role="group" aria-labelledby="t-years-label" id="t-year-chips"></div>
+    </div>
+  </div>
+
+  <p class="meta" id="t-count" role="status"></p>
+  <ul class="session-rows" id="t-rows"></ul>
+  <p><button type="button" class="watch secondary" id="t-more" hidden>Show everything</button></p>
+
+  <script>
+    import index from "../../data/normalized/observatory-index.json";
+
+    const all = index.sessions
+      .filter((s) => s.tr && s.trUrl)
+      .sort((a, b) => b.y - a.y || a.t.localeCompare(b.t));
+    const years = [...new Set(all.map((s) => s.y))].sort();
+
+    const state = { q: "", year: null, expanded: false };
+    const PREVIEW = 50;
+
+    const rowsEl = document.getElementById("t-rows");
+    const countEl = document.getElementById("t-count");
+    const moreEl = document.getElementById("t-more");
+    const yearChips = document.getElementById("t-year-chips");
+
+    for (const y of [null, ...years]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip fob";
+      b.textContent = y === null ? "All" : `’${String(y).slice(2)}`;
+      b.addEventListener("click", () => {
+        state.year = y;
+        state.expanded = false;
+        render();
+      });
+      b.dataset.year = y ?? "";
+      yearChips.append(b);
+    }
+
+    document.getElementById("t-query").addEventListener("input", (e) => {
+      state.q = e.target.value.trim().toLowerCase();
+      state.expanded = false;
+      render();
+    });
+    moreEl.addEventListener("click", () => {
+      state.expanded = true;
+      render();
+    });
+
+    // ——— transcript conversion (parity with the app, improved cue ends:
+    // each cue ends where the next begins; the last gets +4s) ———
+    const pad = (n, w = 2) => String(n).padStart(w, "0");
+    const stamp = (sec) =>
+      `${pad(Math.floor(sec / 3600))}:${pad(Math.floor((sec % 3600) / 60))}:${pad(Math.floor(sec % 60))},${pad(Math.round((sec % 1) * 1000), 3)}`;
+
+    const entriesOf = (json) => Object.values(json)[0]?.transcript ?? [];
+
+    const toSRT = (json) => {
+      const entries = entriesOf(json);
+      return entries
+        .map(([time, text], i) => {
+          const end = i + 1 < entries.length ? entries[i + 1][0] : time + 4;
+          return `${i + 1}\n${stamp(time)} --> ${stamp(end)}\n${String(text).trim()}\n`;
+        })
+        .join("\n");
+    };
+
+    const toTXT = (json) =>
+      entriesOf(json)
+        .map(([, text]) => String(text))
+        .join("")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+
+    async function download(s, kind, button) {
+      button.disabled = true;
+      try {
+        const json = await fetch(s.trUrl).then((r) => r.json());
+        const content = kind === "srt" ? toSRT(json) : toTXT(json);
+        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${s.id}.${kind === "srt" ? "srt" : "txt"}`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      } catch {
+        open(s.trUrl, "_blank");
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    const copy = (text, button) => {
+      navigator.clipboard?.writeText(text);
+      const old = button.textContent;
+      button.textContent = "copied";
+      setTimeout(() => (button.textContent = old), 900);
+    };
+
+    function render() {
+      yearChips.querySelectorAll(".chip").forEach((b) => {
+        const v = b.dataset.year === "" ? null : Number(b.dataset.year);
+        b.setAttribute("aria-pressed", String(v === state.year));
+      });
+
+      const list = all.filter(
+        (s) =>
+          (state.year === null || s.y === state.year) &&
+          (!state.q || s.t.toLowerCase().includes(state.q) || s.id.includes(state.q))
+      );
+      countEl.textContent = `${list.length.toLocaleString("en")} transcripts`;
+
+      const visible = state.expanded ? list : list.slice(0, PREVIEW);
+      rowsEl.replaceChildren(
+        ...visible.map((s) => {
+          const li = document.createElement("li");
+          li.className = "session-row";
+          li.innerHTML = `
+            <div class="row-body">
+              <h3><a href="/sessions/${s.id}/"></a></h3>
+              <p class="meta">WWDC${String(s.y).slice(2)} · ${Math.round(s.d / 60)} min</p>
+            </div>
+            <span class="row-leader" aria-hidden="true"></span>
+            <span class="row-actions"></span>`;
+          li.querySelector("a").textContent = s.t;
+          const actions = li.querySelector(".row-actions");
+          const mk = (label, fn, title) => {
+            const b = document.createElement("button");
+            b.type = "button";
+            b.className = "chip";
+            b.textContent = label;
+            if (title) b.title = title;
+            b.addEventListener("click", fn);
+            actions.append(b);
+          };
+          mk(".srt", (e) => download(s, "srt", e.currentTarget), "Download subtitles");
+          mk(".txt", (e) => download(s, "txt", e.currentTarget), "Download plain text");
+          mk("copy id", (e) => copy(s.id, e.currentTarget));
+          mk("copy url", (e) => copy(s.u, e.currentTarget), "Copy session URL");
+          const a = document.createElement("a");
+          a.className = "chip";
+          a.href = s.u;
+          a.rel = "external";
+          a.textContent = "↗";
+          a.title = "Open at developer.apple.com";
+          actions.append(a);
+          return li;
+        })
+      );
+      moreEl.hidden = state.expanded || list.length <= PREVIEW;
+      moreEl.textContent = `Show all ${list.length.toLocaleString("en")}`;
+    }
+
+    render();
+  </script>
+</Base>
+
+<style is:global>
+  .filter-input {
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    border-radius: 2px;
+    padding: 0.4rem 0.7rem;
+    min-inline-size: 16rem;
+  }
+
+  .row-actions {
+    display: flex;
+    gap: 0.3rem;
+    flex: none;
+    align-items: center;
+  }
+
+  .row-actions .chip {
+    font-size: 0.66rem;
+    padding: 0.18rem 0.5rem;
+    text-decoration: none;
+  }
+</style>

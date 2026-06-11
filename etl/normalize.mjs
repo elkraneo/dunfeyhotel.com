@@ -32,9 +32,13 @@ const snapDir = join(rawRoot, snapName);
 
 const contents = JSON.parse(await readFile(join(snapDir, "contents.json"), "utf8"));
 let transcriptIds = new Set();
+let transcriptUrls = new Map();
 try {
   const manifest = JSON.parse(await readFile(join(snapDir, "transcript-manifest-eng.json"), "utf8"));
   transcriptIds = new Set(Object.keys(manifest.individual ?? {}));
+  transcriptUrls = new Map(
+    Object.entries(manifest.individual ?? {}).map(([id, v]) => [id, v.url ?? null])
+  );
 } catch {}
 
 // Typographic apostrophes for prose fields (never applied to code).
@@ -101,6 +105,7 @@ const sessions = contents.contents
     thumb: artwork(c, "250x141"),
     ogImage: artwork(c, "900x506"),
     hasTranscript: transcriptIds.has(c.id),
+    transcriptUrl: transcriptUrls.get(c.id) ?? null,
     chapters: c.media?.chapters ?? [],
     codeSnippets: (c.codeSnippets ?? []).map((s) => ({
       title: s.title,
@@ -108,6 +113,8 @@ const sessions = contents.contents
       startTimeSeconds: s.startTimeSeconds ?? null,
       endTimeSeconds: s.endTimeSeconds ?? null,
       code: stripHTML(s.code ?? ""),
+      // Apple ships the snippet pre-highlighted (span.syntax-*); keep it for display.
+      html: s.code ?? "",
     })),
   }));
 
@@ -220,6 +227,9 @@ const observatoryIndex = {
     c: s.codeSnippets.length,
     r: s.resourceIds,
     img: s.thumb,
+    tr: s.hasTranscript ? 1 : 0,
+    trUrl: s.transcriptUrl,
+    u: s.webPermalink,
   })),
   resources: resources
     .filter((r) => r.type && r.title)

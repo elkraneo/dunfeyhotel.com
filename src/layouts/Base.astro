@@ -3,6 +3,19 @@ import "../styles/global.css";
 import { aggregates, sessions, years } from "../lib/data.js";
 
 const { title, description, ogImage } = Astro.props;
+
+const path = Astro.url.pathname;
+// Years and topics are indexed on the homepage registry; the nav carries the
+// instrument, the finder, and the two founding artifact collections.
+const nav = [
+  { label: "Observatory", href: "/observatory/", section: "/observatory" },
+  { label: "Search", href: "/search/", section: "/search" },
+  { label: "Transcripts", href: "/transcripts/", section: "/transcripts" },
+  { label: "Resources", href: "/resources/", section: "/resources" },
+  { label: "Dispatches", href: "/dispatches/", section: "/dispatches" },
+  { label: "About", href: "/about/", section: "/about" },
+];
+const current = (section) => (path.startsWith(section) ? "page" : undefined);
 const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as data";
 const desc =
   description ??
@@ -17,10 +30,10 @@ const desc =
     <script is:inline>
       (() => {
         try {
-          const t = localStorage.getItem("dh-theme");
-          if (t) document.documentElement.dataset.theme = t;
-          else if (matchMedia("(prefers-color-scheme: dark)").matches)
-            document.documentElement.dataset.theme = "night";
+          const mode = localStorage.getItem("dh-theme") || "auto";
+          const dark = matchMedia("(prefers-color-scheme: dark)").matches;
+          document.documentElement.dataset.theme =
+            mode === "auto" ? (dark ? "night" : "ledger") : mode;
         } catch {}
       })();
     </script>
@@ -45,13 +58,11 @@ const desc =
         <a class="wordmark" href="/">Dunfey<span class="amp"> · </span>Hotel</a>
         <span class="tagline">WWDC as data, est. 1983</span>
         <nav aria-label="Primary">
-          <a href="/observatory/">Observatory</a>
-          <a href="/search/">Search</a>
-          <a href="/years/2026/">Years</a>
-          <a href="/topics/accessibility-and-inclusion/">Topics</a>
-          <a href="/dispatches/">Dispatches</a>
-          <a href="/about/">About</a>
+          {nav.map((item) => (
+            <a href={item.href} aria-current={current(item.section)}>{item.label}</a>
+          ))}
           <select id="theme-select" class="theme-select" aria-label="Colour theme">
+            <option value="auto">Auto</option>
             <option value="ledger">Ledger</option>
             <option value="night">Night audit</option>
             <option value="cupertino">Cupertino</option>
@@ -83,14 +94,28 @@ const desc =
       (() => {
         const sel = document.getElementById("theme-select");
         if (!sel) return;
-        sel.value = document.documentElement.dataset.theme || "ledger";
+        const media = matchMedia("(prefers-color-scheme: dark)");
+        const mode = () => {
+          try {
+            return localStorage.getItem("dh-theme") || "auto";
+          } catch {
+            return "auto";
+          }
+        };
+        const apply = () => {
+          const m = mode();
+          document.documentElement.dataset.theme =
+            m === "auto" ? (media.matches ? "night" : "ledger") : m;
+          dispatchEvent(new CustomEvent("dh-theme"));
+        };
+        sel.value = mode();
         sel.addEventListener("change", () => {
-          document.documentElement.dataset.theme = sel.value;
           try {
             localStorage.setItem("dh-theme", sel.value);
           } catch {}
-          dispatchEvent(new CustomEvent("dh-theme"));
+          apply();
         });
+        media.addEventListener("change", apply);
       })();
     </script>
   </body>

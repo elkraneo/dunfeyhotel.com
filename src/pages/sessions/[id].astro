@@ -90,7 +90,7 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
                 </a>
               </span>
             </summary>
-            <pre><code>{snip.code}</code></pre>
+            <pre><code set:html={snip.html || snip.code} /></pre>
           </details>
         ))}
       </section>

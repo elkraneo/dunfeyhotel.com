@@ -1,0 +1,154 @@
+---
+import Base from "../layouts/Base.astro";
+import { resources, sessions } from "../lib/data.js";
+
+const total = resources.length;
+// Compact embed: id, type, title, description, url, referencing sessions.
+const sessionTitle = new Map(sessions.map((s) => [s.id, s.title]));
+const embed = resources
+  .filter((r) => r.type && r.title && r.url)
+  .map((r) => ({
+    type: r.type,
+    t: r.title,
+    d: r.description,
+    u: r.url,
+    by: r.sessionIds,
+  }));
+const types = [...new Set(embed.map((r) => r.type))].sort();
+---
+
+<Base
+  title="Resources"
+  description={`${total.toLocaleString("en")} documents, sample projects, guides and downloads referenced across WWDC — filterable by type, each linked to its citing sessions.`}
+>
+  <section class="hero">
+    <p class="kicker">The vault</p>
+    <h1>Resources.</h1>
+    <p class="lede">
+      Every document, sample project, guide and download the sessions
+      reference — with the sessions that cite each one.
+    </p>
+  </section>
+
+  <div class="controls" role="group" aria-label="Resource filters">
+    <div class="lens">
+      <label class="kicker" for="r-query">Filter</label>
+      <input id="r-query" type="search" class="filter-input" placeholder="Title or description…" />
+    </div>
+    <div class="lens">
+      <p class="kicker" id="r-types-label">Type</p>
+      <div class="chip-row" role="group" aria-labelledby="r-types-label" id="r-type-chips"></div>
+    </div>
+  </div>
+
+  <p class="meta" id="r-count" role="status"></p>
+  <ul class="plain" id="r-rows"></ul>
+  <p><button type="button" class="watch secondary" id="r-more" hidden>Show everything</button></p>
+
+  <script define:vars={{ embed, types, sessionTitles: Object.fromEntries(sessionTitle) }}>
+    const TYPE_LABELS = {
+      samplecode: "Sample code",
+      documentation: "Documentation",
+      guide: "Guide",
+      developerForum: "Forum",
+      download: "Download",
+    };
+    const all = embed.sort((a, b) => a.t.localeCompare(b.t));
+    const state = { q: "", type: null, expanded: false };
+    const PREVIEW = 60;
+
+    const rowsEl = document.getElementById("r-rows");
+    const countEl = document.getElementById("r-count");
+    const moreEl = document.getElementById("r-more");
+    const typeChips = document.getElementById("r-type-chips");
+
+    for (const t of [null, ...types]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.textContent = t === null ? "All" : (TYPE_LABELS[t] ?? t);
+      b.addEventListener("click", () => {
+        state.type = t;
+        state.expanded = false;
+        render();
+      });
+      b.dataset.type = t ?? "";
+      typeChips.append(b);
+    }
+
+    document.getElementById("r-query").addEventListener("input", (e) => {
+      state.q = e.target.value.trim().toLowerCase();
+      state.expanded = false;
+      render();
+    });
+    moreEl.addEventListener("click", () => {
+      state.expanded = true;
+      render();
+    });
+
+    const copy = (text, button) => {
+      navigator.clipboard?.writeText(text);
+      const old = button.textContent;
+      button.textContent = "copied";
+      setTimeout(() => (button.textContent = old), 900);
+    };
+
+    function render() {
+      typeChips.querySelectorAll(".chip").forEach((b) =>
+        b.setAttribute("aria-pressed", String((b.dataset.type || null) === state.type))
+      );
+
+      const list = all.filter(
+        (r) =>
+          (state.type === null || r.type === state.type) &&
+          (!state.q ||
+            r.t.toLowerCase().includes(state.q) ||
+            (r.d ?? "").toLowerCase().includes(state.q))
+      );
+      countEl.textContent = `${list.length.toLocaleString("en")} resources`;
+
+      const visible = state.expanded ? list : list.slice(0, PREVIEW);
+      rowsEl.replaceChildren(
+        ...visible.map((r) => {
+          const li = document.createElement("li");
+          const head = document.createElement("span");
+          head.innerHTML = `<span class="meta">[${TYPE_LABELS[r.type] ?? r.type}]</span> `;
+          const link = document.createElement("a");
+          link.href = r.u;
+          link.rel = "external";
+          link.innerHTML = "<strong></strong>";
+          link.querySelector("strong").textContent = r.t;
+          li.append(head, link);
+          if (r.d) li.append(` — ${r.d}`);
+
+          const meta = document.createElement("span");
+          meta.className = "meta";
+          if (r.by.length) {
+            meta.append(" · in ");
+            r.by.slice(0, 4).forEach((id, i) => {
+              if (i) meta.append(", ");
+              const a = document.createElement("a");
+              a.href = `/sessions/${id}/`;
+              a.title = sessionTitles[id] ?? id;
+              a.textContent = `§${id.replace("wwdc", "'").replace("-", " ")}`;
+              meta.append(a);
+            });
+            if (r.by.length > 4) meta.append(` +${r.by.length - 4}`);
+          }
+          const copyBtn = document.createElement("button");
+          copyBtn.type = "button";
+          copyBtn.className = "linkish";
+          copyBtn.textContent = "copy url";
+          copyBtn.addEventListener("click", (e) => copy(r.u, e.currentTarget));
+          meta.append(" · ", copyBtn);
+          li.append(meta);
+          return li;
+        })
+      );
+      moreEl.hidden = state.expanded || list.length <= PREVIEW;
+      moreEl.textContent = `Show all ${list.length.toLocaleString("en")}`;
+    }
+
+    render();
+  </script>
+</Base>

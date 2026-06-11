@@ -38,33 +38,42 @@ import Base from "../layouts/Base.astro";
   <div class="observatory-grid">
     <figure class="panel" id="panel-years">
       <figcaption class="kicker" id="caption-years"></figcaption>
+      <div class="view-toggle" role="group" aria-label="Show as">
+        <button type="button" class="chip" data-view="chart" aria-pressed="true">Chart</button>
+        <button type="button" class="chip" data-view="table" aria-pressed="false">Table</button>
+      </div>
       <div class="plot" id="plot-years"></div>
-      <details class="chart-data">
-        <summary>Same data as table</summary>
-        <div id="data-years"></div>
-      </details>
+      <div class="chart-table" id="data-years" hidden></div>
     </figure>
     <figure class="panel" id="panel-distribution">
       <figcaption class="kicker" id="caption-distribution"></figcaption>
+      <div class="view-toggle" role="group" aria-label="Show as">
+        <button type="button" class="chip" data-view="chart" aria-pressed="true">Chart</button>
+        <button type="button" class="chip" data-view="table" aria-pressed="false">Table</button>
+      </div>
       <div class="plot" id="plot-distribution"></div>
-      <details class="chart-data">
-        <summary>Same data as table</summary>
-        <div id="data-distribution"></div>
-      </details>
+      <div class="chart-table" id="data-distribution" hidden></div>
     </figure>
     <figure class="panel wide" id="panel-lines">
       <figcaption class="kicker" id="caption-lines"></figcaption>
+      <div class="view-toggle" role="group" aria-label="Show as">
+        <button type="button" class="chip" data-view="chart" aria-pressed="true">Chart</button>
+        <button type="button" class="chip" data-view="table" aria-pressed="false">Table</button>
+      </div>
       <div class="plot" id="plot-lines"></div>
-      <details class="chart-data">
-        <summary>Same data as table</summary>
-        <div id="data-lines"></div>
-      </details>
+      <div class="chart-table" id="data-lines" hidden></div>
     </figure>
   </div>
 
   <section class="block" aria-labelledby="cross-section" id="cross-section-block">
     <h2 class="kicker" id="cross-section">Cross-section</h2>
-    <div class="chip-row" role="group" aria-label="Collect as" id="kind-chips"></div>
+    <div class="cross-controls">
+      <div class="chip-row" role="group" aria-label="Collect as" id="kind-chips"></div>
+      <label class="meta" for="cross-sort">
+        Sort
+        <select id="cross-sort" class="theme-select"></select>
+      </label>
+    </div>
     <p class="meta" id="cross-summary" role="status"></p>
     <div id="cross-results"></div>
     <p><button type="button" class="watch secondary" id="cross-more" hidden>Show everything</button></p>
@@ -85,19 +94,26 @@ import Base from "../layouts/Base.astro";
     const { sessions, resources } = index;
     const resourceById = new Map(resources.map((r) => [r.id, r]));
 
-    // 19 hues per theme: dark inks for light papers, lifted tones for night.
+    // 19 hues per theme: distinguishable from each other, ≥4.5:1 for white
+    // chip text, and matched to each theme's paper.
     const PALETTES = {
       ledger: [
-        "#6e2228", "#7d5e20", "#3d5a3f", "#2f4b6e", "#7a4a21",
-        "#5b3a68", "#205e5a", "#8d2f36", "#576238", "#386083",
-        "#8c4214", "#44406e", "#226b45", "#703354", "#665818",
-        "#2c5f73", "#84422c", "#4f5526", "#503e72",
+        "#8c1d22", "#9a6b1f", "#2f6f3e", "#1f4e79", "#b3541e",
+        "#6d3e8e", "#0f766e", "#c43e4b", "#5a6e1f", "#2e7fb8",
+        "#a34708", "#4a44a8", "#1f8a55", "#a23a78", "#8a7a14",
+        "#176d8c", "#9c5230", "#6a7a2a", "#5d3a9b",
       ],
       night: [
-        "#d4737c", "#c9a14e", "#8fbf94", "#85a8d4", "#cf9258",
-        "#b38ac4", "#6fbcb4", "#df8089", "#a9bb7c", "#84aed0",
-        "#d98d52", "#9b95cf", "#6fc097", "#c87fa6", "#bfae55",
-        "#7ab4cc", "#d18a6a", "#a8b36a", "#a48bd0",
+        "#e2858d", "#d9b35e", "#8fbf94", "#85a8d4", "#e0a268",
+        "#c49ad4", "#6fc7be", "#ef8f98", "#b9cb8c", "#94bee0",
+        "#e99d62", "#aba5df", "#7fd0a7", "#d88fb6", "#cfbe65",
+        "#8ac4dc", "#e19a7a", "#b8c37a", "#b49be0",
+      ],
+      cupertino: [
+        "#d70015", "#c93400", "#937400", "#248a3d", "#0c817b",
+        "#008299", "#0071a4", "#0040dd", "#3634a3", "#8944ab",
+        "#d30f45", "#7f6545", "#365314", "#155e75", "#9d174d",
+        "#4d7c0f", "#5b21b6", "#b25000", "#0f766e",
       ],
     };
     const topicIndex = new Map(topics.map((t, i) => [t.id, i]));
@@ -111,6 +127,7 @@ import Base from "../layouts/Base.astro";
     };
     const topicColor = { get: colorOf };
     const topicTitle = new Map(topics.map((t) => [t.id, t.title]));
+    const topicGlyph = new Map(topics.map((t) => [t.id, t.glyph]));
     const slugOf = (title) =>
       title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const topicBySlug = new Map(topics.map((t) => [slugOf(t.title), t]));
@@ -127,18 +144,36 @@ import Base from "../layouts/Base.astro";
       { key: "guide", label: "Guides" },
       { key: "download", label: "Downloads" },
     ];
+    const SESSION_SORTS = {
+      newest: { label: "Newest", fn: (a, b) => b.y - a.y || b.d - a.d },
+      oldest: { label: "Oldest", fn: (a, b) => a.y - b.y || b.d - a.d },
+      longest: { label: "Longest", fn: (a, b) => b.d - a.d },
+      code: { label: "Most code", fn: (a, b) => b.c - a.c },
+      title: { label: "Title A–Z", fn: (a, b) => a.t.localeCompare(b.t) },
+    };
+    const RESOURCE_SORTS = {
+      title: { label: "Title A–Z", fn: (a, b) => a.r.t.localeCompare(b.r.t) },
+      cited: { label: "Most cited", fn: (a, b) => b.by.length - a.by.length },
+    };
 
     // ——— state, hydrated from the URL ———
     const params = new URLSearchParams(location.search);
     const state = {
       measure: MEASURES[params.get("measure")] ? params.get("measure") : "sessions",
-      year: years.includes(Number(params.get("year"))) ? Number(params.get("year")) : null,
+      // Empty set = all years. `year` accepted for older links.
+      years: new Set(
+        (params.get("years") ?? params.get("year") ?? "")
+          .split(",")
+          .map(Number)
+          .filter((y) => years.includes(y))
+      ),
       active: new Set(
         params.get("topics")
           ? params.get("topics").split(",").map((s) => topicBySlug.get(s)?.id).filter(Boolean)
           : topics.map((t) => t.id)
       ),
       kind: KINDS.some((k) => k.key === params.get("kind")) ? params.get("kind") : "sessions",
+      sort: params.get("sort"),
       expanded: false,
     };
     if (state.active.size === 0) state.active = new Set(topics.map((t) => t.id));
@@ -146,10 +181,11 @@ import Base from "../layouts/Base.astro";
     function syncURL() {
       const p = new URLSearchParams();
       if (state.measure !== "sessions") p.set("measure", state.measure);
-      if (state.year) p.set("year", state.year);
+      if (state.years.size) p.set("years", [...state.years].sort().join(","));
       if (state.active.size < topics.length)
         p.set("topics", topics.filter((t) => state.active.has(t.id)).map((t) => slugOf(t.title)).join(","));
       if (state.kind !== "sessions") p.set("kind", state.kind);
+      if (state.sort) p.set("sort", state.sort);
       history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
     }
 
@@ -159,6 +195,9 @@ import Base from "../layouts/Base.astro";
     const yearLabel = (y) => `WWDC${String(y).slice(2)}`;
     const shortYear = (y) => `’${String(y).slice(2)}`;
     const minutes = (d) => (d ? `${Math.round(d / 60)} min` : "—");
+    const yearIn = (y) => state.years.size === 0 || state.years.has(y);
+    const yearScope = () =>
+      state.years.size ? [...state.years].sort().map(shortYear).join("+") : null;
 
     // ——— controls ———
     const yearChips = document.getElementById("year-chips");
@@ -168,7 +207,8 @@ import Base from "../layouts/Base.astro";
       b.className = "chip fob";
       b.textContent = y === null ? "All years" : shortYear(y);
       b.addEventListener("click", () => {
-        state.year = y;
+        if (y === null) state.years.clear();
+        else state.years.has(y) ? state.years.delete(y) : state.years.add(y);
         state.expanded = false;
         render();
       });
@@ -225,6 +265,7 @@ import Base from "../layouts/Base.astro";
       b.textContent = k.label;
       b.addEventListener("click", () => {
         state.kind = k.key;
+        state.sort = null;
         state.expanded = false;
         render();
       });
@@ -232,10 +273,47 @@ import Base from "../layouts/Base.astro";
       kindChips.append(b);
     }
 
+    const sortSelect = document.getElementById("cross-sort");
+    sortSelect.addEventListener("change", () => {
+      state.sort = sortSelect.value;
+      state.expanded = false;
+      render();
+    });
+    function syncSortOptions() {
+      const sorts = state.kind === "sessions" ? SESSION_SORTS : RESOURCE_SORTS;
+      const fallback = state.kind === "sessions" ? "newest" : "title";
+      if (!sorts[state.sort]) state.sort = fallback;
+      sortSelect.replaceChildren(
+        ...Object.entries(sorts).map(([key, s]) => {
+          const o = document.createElement("option");
+          o.value = key;
+          o.textContent = s.label;
+          o.selected = key === state.sort;
+          return o;
+        })
+      );
+      return sorts[state.sort].fn;
+    }
+
     const moreButton = document.getElementById("cross-more");
     moreButton.addEventListener("click", () => {
       state.expanded = true;
       render();
+    });
+
+    // Chart ⇄ table per panel — both views are first-class.
+    document.querySelectorAll(".panel .view-toggle").forEach((group) => {
+      const panel = group.closest(".panel");
+      group.querySelectorAll(".chip").forEach((btn) =>
+        btn.addEventListener("click", () => {
+          const view = btn.dataset.view;
+          group
+            .querySelectorAll(".chip")
+            .forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+          panel.querySelector(".plot").hidden = view !== "chart";
+          panel.querySelector(".chart-table").hidden = view !== "table";
+        })
+      );
     });
 
     // ——— rendering ———
@@ -266,9 +344,7 @@ import Base from "../layouts/Base.astro";
 
     function matchingSessions() {
       return sessions.filter(
-        (s) =>
-          (state.year === null || s.y === state.year) &&
-          s.k.some((id) => state.active.has(id))
+        (s) => yearIn(s.y) && s.k.some((id) => state.active.has(id))
       );
     }
 
@@ -281,10 +357,11 @@ import Base from "../layouts/Base.astro";
         b.setAttribute("aria-pressed", String(b.dataset.kind === state.kind))
       );
 
+      const sortFn = syncSortOptions();
       if (state.kind === "sessions") {
-        const list = [...matched].sort((a, b) => b.y - a.y || b.d - a.d);
+        const list = [...matched].sort(sortFn);
         const visible = state.expanded ? list : list.slice(0, PREVIEW);
-        summary.textContent = `${list.length} sessions matching any active topic${state.year ? ` · ${yearLabel(state.year)}` : ""}`;
+        summary.textContent = `${list.length} sessions matching any active topic${yearScope() ? ` · ${yearScope()}` : ""}`;
         const rows = document.createElement("ul");
         rows.className = "session-rows";
         visible.forEach((s, i) => {
@@ -317,9 +394,9 @@ import Base from "../layouts/Base.astro";
             seen.set(rid, entry);
           }
         }
-        const list = [...seen.values()].sort((a, b) => a.r.t.localeCompare(b.r.t));
+        const list = [...seen.values()].sort(sortFn);
         const visible = state.expanded ? list : list.slice(0, PREVIEW * 2);
-        summary.textContent = `${list.length} ${KINDS.find((k) => k.key === state.kind).label.toLowerCase()}${state.year ? ` · ${yearLabel(state.year)}` : ""}`;
+        summary.textContent = `${list.length} ${KINDS.find((k) => k.key === state.kind).label.toLowerCase()}${yearScope() ? ` · ${yearScope()}` : ""}`;
         const ul = document.createElement("ul");
         ul.className = "plain";
         for (const { r, by } of visible) {
@@ -355,12 +432,16 @@ import Base from "../layouts/Base.astro";
       syncURL();
       const m = MEASURES[state.measure];
       const cells = sessionCells.filter((c) => state.active.has(c.topicId));
-      const width = Math.min(640, document.getElementById("panel-years").clientWidth - 24);
+      const widthOf = (id) => Math.max(280, document.getElementById(id).clientWidth - 8);
+      const width = widthOf("panel-years");
       const tipYear = { format: { x: (y) => yearLabel(y) } };
 
       yearChips.querySelectorAll(".chip").forEach((b) => {
         const v = b.dataset.year === "" ? null : Number(b.dataset.year);
-        b.setAttribute("aria-pressed", String(v === state.year));
+        b.setAttribute(
+          "aria-pressed",
+          String(v === null ? state.years.size === 0 : state.years.has(v))
+        );
       });
       topicChips.querySelectorAll(".chip").forEach((b) => {
         b.setAttribute("aria-pressed", String(state.active.has(Number(b.dataset.topic))));
@@ -372,9 +453,11 @@ import Base from "../layouts/Base.astro";
         year,
         value: cells.filter((c) => c.year === year).reduce((n, c) => n + m.of(c), 0),
       }));
-      const total = perYear.reduce((n, d) => n + d.value, 0);
+      const total = perYear
+        .filter((d) => yearIn(d.year))
+        .reduce((n, d) => n + d.value, 0);
       document.getElementById("caption-years").textContent =
-        `${m.label} by year, primary topic · ${fmt(state.year ? perYear.find((d) => d.year === state.year)?.value ?? 0 : total)} ${state.year ? yearLabel(state.year) : "total"}`;
+        `${m.label} by year, primary topic · ${fmt(total)} ${yearScope() ?? "total"}`;
       mount(
         "plot-years",
         Plot.plot({
@@ -383,15 +466,12 @@ import Base from "../layouts/Base.astro";
           marginLeft: 46,
           style: { fontSize: "12.5px" },
           x: { tickFormat: shortYear, label: null, type: "band" },
-          y: { label: m.label, grid: true },
+          y: { label: m.label, grid: true, nice: true },
           marks: [
             Plot.barY(perYear, {
               x: "year",
               y: "value",
-              fill: (d) =>
-                state.year === null || d.year === state.year
-                  ? css("--oxblood")
-                  : css("--bar-muted"),
+              fill: (d) => (yearIn(d.year) ? css("--oxblood") : css("--bar-muted")),
               tip: tipYear,
             }),
           ],
@@ -404,7 +484,7 @@ import Base from "../layouts/Base.astro";
       );
 
       // B · distribution across topics
-      const scope = state.year ? cells.filter((c) => c.year === state.year) : cells;
+      const scope = cells.filter((c) => yearIn(c.year));
       const perTopic = topics
         .filter((t) => state.active.has(t.id))
         .map((t) => ({
@@ -415,7 +495,7 @@ import Base from "../layouts/Base.astro";
         .filter((d) => d.value > 0)
         .sort((a, b) => b.value - a.value);
       document.getElementById("caption-distribution").textContent =
-        `${m.label} by primary topic · ${state.year ? yearLabel(state.year) : "all years"}`;
+        `${m.label} by primary topic · ${yearScope() ?? "all years"}`;
       dataTable(
         "data-distribution",
         ["Topic", m.label],
@@ -424,11 +504,11 @@ import Base from "../layouts/Base.astro";
       mount(
         "plot-distribution",
         Plot.plot({
-          width,
-          height: Math.max(160, perTopic.length * 24 + 44),
+          width: widthOf("panel-distribution"),
+          height: perTopic.length * 26 + 54,
           marginLeft: 200,
           style: { fontSize: "12.5px" },
-          x: { label: m.label, grid: true },
+          x: { label: m.label, grid: true, nice: true },
           y: { label: null },
           marks: [
             Plot.barX(perTopic, {
@@ -470,14 +550,16 @@ import Base from "../layouts/Base.astro";
       mount(
         "plot-lines",
         Plot.plot({
-          width: Math.min(1100, document.getElementById("panel-lines").clientWidth - 24),
-          height: 320,
+          width: widthOf("panel-lines"),
+          height: 340,
           marginLeft: 46,
           style: { fontSize: "12.5px" },
           x: { tickFormat: shortYear, label: null },
-          y: { label: m.label, grid: true },
+          y: { label: m.label, grid: true, nice: true },
           marks: [
-            state.year ? Plot.ruleX([state.year], { stroke: css("--ink"), strokeDasharray: "3,3" }) : null,
+            state.years.size
+              ? Plot.ruleX([...state.years], { stroke: css("--ink"), strokeDasharray: "3,3" })
+              : null,
             Plot.line(lineData, {
               x: "year",
               y: "value",
@@ -495,6 +577,17 @@ import Base from "../layouts/Base.astro";
               tip: { format: { x: (y) => yearLabel(y) } },
               channels: { topic: "topic" },
             }),
+            // Topic glyphs on the lines — the app's signature. Black line art,
+            // so skipped on the dark theme.
+            document.documentElement.dataset.theme !== "night"
+              ? Plot.image(lineData, {
+                  x: "year",
+                  y: "value",
+                  src: (d) => topicGlyph.get(d.id),
+                  width: 12,
+                  height: 12,
+                })
+              : null,
           ].filter(Boolean),
         })
       );
@@ -513,83 +606,6 @@ import Base from "../layouts/Base.astro";
 </Base>
 
 <style is:global>
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.4rem 2.5rem;
-    padding: 1rem 0 1.4rem;
-    border-bottom: 1px solid var(--rule-strong);
-    margin-bottom: 1.5rem;
-  }
-
-  .lens {
-    border: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .lens legend {
-    padding: 0;
-  }
-
-  .lens label {
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    margin-right: 1rem;
-  }
-
-  .linkish {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    color: var(--oxblood);
-    cursor: pointer;
-    text-decoration: underline;
-    text-underline-offset: 0.18em;
-  }
-
-  .chip-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.35rem;
-    max-width: 46rem;
-  }
-
-  .chip {
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    letter-spacing: 0.04em;
-    background: var(--paper);
-    border: 1px solid var(--rule-strong);
-    color: var(--ink);
-    padding: 0.28rem 0.65rem;
-    cursor: pointer;
-    border-radius: 999px;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
-  }
-
-  .chip img {
-    display: inline-block;
-  }
-
-  .chip[aria-pressed="true"] {
-    background: var(--ink);
-    border-color: var(--ink);
-    color: var(--paper);
-  }
-
-  .chip[aria-pressed="true"] img {
-    filter: invert(1);
-  }
-
-  .chip.topic[aria-pressed="true"] {
-    background: var(--chip-color);
-    border-color: var(--chip-color);
-  }
-
   .observatory-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
@@ -612,7 +628,11 @@ import Base from "../layouts/Base.astro";
     font-family: var(--font-mono) !important;
   }
 
-  #kind-chips {
+  .cross-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.5rem;
     margin-block: 0.6rem 0.8rem;
   }
 
