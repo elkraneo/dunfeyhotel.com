@@ -1,0 +1,74 @@
+name: refresh
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: elkraneo/dunfey-hotel-data-private
+          ssh-key: ${{ secrets.DATA_DEPLOY_KEY }}
+          path: data
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - name: Fetch snapshot (a 403 here likely means Apple rotated the feed environment)
+        run: node etl/fetch.mjs
+
+      - run: node etl/transcripts-cache.mjs
+
+      - name: Refresh YouTube map (non-fatal — datacenter IPs are sometimes blocked)
+        run: |
+          pipx install yt-dlp
+          node etl/youtube.mjs || echo "::warning::YouTube refresh skipped"
+
+      - run: node etl/normalize.mjs
+
+      - run: npm run build
+
+      - name: Deploy
+        env:
+          KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          ssh-keyscan -H 89.167.18.137 >> ~/.ssh/known_hosts
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy" dist/ root@89.167.18.137:/data/sites/dunfeyhotel/dist/
+
+      - name: Archive new data
+        run: |
+          cd data
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "dunfey-refresh"
+            git config user.email "refresh@dunfeyhotel.com"
+            git add -A
+            git commit -m "Automated refresh: $(date -u +%F)"
+            git push
+          else
+            echo "no new data"
+          fi
+
+      - name: Commit youtube map if changed
+        run: |
+          if [ -n "$(git status --porcelain etl/youtube-map.json)" ]; then
+            git config user.name "dunfey-refresh"
+            git config user.email "refresh@dunfeyhotel.com"
+            git add etl/youtube-map.json
+            git commit -m "Automated refresh: YouTube map $(date -u +%F)"
+            git push
+          fi
