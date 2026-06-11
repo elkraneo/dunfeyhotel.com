@@ -30,6 +30,34 @@ const trends = topics
   })
   .sort((a, b) => b.delta - a.delta);
 
+// Resurfaced: facts the data volunteers, recomputed every build. The site
+// shows you something you didn't ask for — that's the explorative contract.
+const latest = years.at(-1);
+const mover = trends[0];
+const densest = [...sessions].sort(
+  (a, b) => b.codeSnippets.length - a.codeSnippets.length
+)[0];
+const deepCut = [...sessions]
+  .filter((s) => s.year === years[0])
+  .sort((a, b) => (b.duration ?? 0) - (a.duration ?? 0))[0];
+const resurfaced = [
+  {
+    fact: `${mover.topic.title} moved hardest: ${mover.before} → ${mover.now} talks across the last three conferences.`,
+    href: `/topics/${topicSlug(mover.topic.title)}/`,
+    label: "follow the trend",
+  },
+  {
+    fact: `“${densest.title}” (${densest.year}) put ${densest.codeSnippets.length} pieces of code on screen — more than any other session.`,
+    href: `/sessions/${densest.id}/`,
+    label: "read the code",
+  },
+  {
+    fact: `Only ${aggregates.byYear[years[0]].talks} talks survive from WWDC${String(years[0]).slice(2)}. “${deepCut.title}” is the longest of them.`,
+    href: `/sessions/${deepCut.id}/`,
+    label: "open the deep cut",
+  },
+];
+
 const crossSections = [
   {
     label: `Accessibility at WWDC${String(years.at(-1)).slice(2)}`,
@@ -52,18 +80,24 @@ const crossSections = [
 
 <Base>
   <section class="hero">
-    <p class="kicker">Est. 1983, San Mateo · the registry runs {years[0]}–{years.at(-1)}</p>
+    <p class="kicker">Est. 1983, San Mateo · the registry runs {years[0]}–{latest}</p>
     <h1>The conference, kept like a hotel ledger.</h1>
     <p class="lede">
-      Every WWDC talk Apple still publishes — indexed, cross-referenced and
-      counted honestly. Browse the rooms, or step into the observatory and
-      correlate for yourself. Everything links to the source; nothing is
-      rehosted.
+      Every WWDC session since {years[0]} as data: category, duration,
+      on-screen code, cross-references. Watching happens at Apple — everything
+      else happens here.
     </p>
-    <p>
-      <a class="watch" href="/observatory/">Enter the observatory</a>
-      <a class="watch secondary" href="/dispatches/">Read the dispatches</a>
-    </p>
+    <form class="concierge" action="/search/" method="get" role="search">
+      <label class="visually-hidden" for="q">Search the registry</label>
+      <input
+        id="q"
+        name="q"
+        type="search"
+        placeholder={`Search ${totalTalks.toLocaleString("en")} sessions, their code and documents…`}
+      />
+      <button class="watch" type="submit">Search</button>
+      <a class="watch secondary" href="/observatory/">Or correlate in the observatory</a>
+    </form>
     <div class="figures">
       <div class="figure"><b>{totalTalks.toLocaleString("en")}</b><span>talks</span></div>
       <div class="figure"><b>{totalHours.toLocaleString("en")}</b><span>hours</span></div>
@@ -72,7 +106,19 @@ const crossSections = [
     </div>
   </section>
 
-  <section aria-labelledby="cross-sections">
+  <section aria-labelledby="resurfaced">
+    <h2 class="kicker" id="resurfaced">Resurfaced from the registry</h2>
+    <ul class="plain">
+      {resurfaced.map((r) => (
+        <li>
+          {r.fact}{" "}
+          <a class="timestamp-link" href={r.href}>{r.label}</a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <section class="block" aria-labelledby="cross-sections">
     <h2 class="kicker" id="cross-sections">Start from a cross-section</h2>
     <p class="chip-row">
       {crossSections.map((c) => (
@@ -118,9 +164,8 @@ const crossSections = [
       </tbody>
     </table>
     <p class="footnote">
-      Counts include talks only (videos and sessions), not labs or
-      get-togethers. Years before 2019 reflect only the catalog Apple still
-      publishes — not the full conference that took place.
+      Talks only — no labs or get-togethers. Pre-2019 years reflect what Apple
+      still publishes, not the full conference.
     </p>
   </section>
 

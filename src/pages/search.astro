@@ -10,9 +10,7 @@ import Base from "../layouts/Base.astro";
     <p class="kicker">The concierge</p>
     <h1>Ask for anything in the registry.</h1>
     <p class="lede">
-      Searches titles, descriptions, the code shown on screen, document
-      catalogs and dispatches. Try a framework, an API name, or a phrase you
-      remember from a session.
+      Titles, descriptions, on-screen code, document catalogs, dispatches.
     </p>
   </section>
 
@@ -23,12 +21,14 @@ import Base from "../layouts/Base.astro";
   <script is:inline>
     window.addEventListener("DOMContentLoaded", () => {
       if (typeof PagefindUI !== "undefined") {
-        new PagefindUI({
+        const ui = new PagefindUI({
           element: "#search",
           showSubResults: true,
           showImages: false,
           pageSize: 10,
         });
+        const q = new URLSearchParams(location.search).get("q");
+        if (q) ui.triggerSearch(q);
         const input = document.querySelector("#search input");
         if (input) input.focus();
       } else {

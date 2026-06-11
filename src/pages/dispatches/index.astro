@@ -13,9 +13,8 @@ const dispatches = (await getCollection("dispatches", ({ data }) => !data.draft)
     <p class="kicker">Dispatches</p>
     <h1>Analyses written on top of the ledger.</h1>
     <p class="lede">
-      Guides and editorial pieces where the session lists, figures and document
-      catalogs are live queries against the dataset — they stay current as the
-      data updates.
+      Lists and figures are live queries against the dataset; the text is
+      editorial.
     </p>
   </section>
 
@@ -33,8 +32,7 @@ const dispatches = (await getCollection("dispatches", ({ data }) => !data.draft)
   <section class="block">
     <h2 class="kicker">Generated catalogs</h2>
     <p>
-      Every year also has an auto-generated document catalog — all resources
-      referenced that year, grouped by topic, with a TSV download:
+      Per year: every referenced resource, grouped by topic, with TSV download.
     </p>
     <ul class="plain">
       {[...years].reverse().map((y) => (
