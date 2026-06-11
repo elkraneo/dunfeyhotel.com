@@ -56,4 +56,4 @@ npm run build        # astro build + search index
 ## Not affiliated
 
 WWDC is a trademark of Apple Inc. This project is independent and
-non-commercial, for research and education. Contact: cristian@210x7.io
+non-commercial, for research and education. Contact: dunfeyhotel@reality2713.com
