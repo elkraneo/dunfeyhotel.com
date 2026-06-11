@@ -1,0 +1,8 @@
+# Apple-sourced data is never committed: the build fetches it from Apple's CDN.
+# Raw snapshot archives live in apple-vault / private storage, not in this repo.
+data/
+
+node_modules/
+dist/
+.astro/
+.DS_Store
