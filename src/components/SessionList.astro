@@ -1,10 +1,7 @@
 ---
 // Live session list for dispatches: filter by year and/or topic slug.
-import {
-  sessions,
-  topicBySlug,
-  formatDuration,
-} from "../lib/data.js";
+import { sessions, topicBySlug } from "../lib/data.js";
+import SessionCard from "./SessionCard.astro";
 
 const { year, topic, limit } = Astro.props;
 const t = topic ? topicBySlug.get(topic) : null;
@@ -20,12 +17,6 @@ if (limit) list = list.slice(0, limit);
 
 <div class="card-grid">
   {list.map((s) => (
-    <div class="card">
-      <p class="meta">
-        WWDC{String(s.year).slice(2)} · {formatDuration(s.duration)}
-        {s.codeSnippets.length > 0 && ` · ${s.codeSnippets.length} snippets`}
-      </p>
-      <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
-    </div>
+    <SessionCard session={s} />
   ))}
 </div>

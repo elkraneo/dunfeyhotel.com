@@ -1,7 +1,10 @@
 ---
 import "../styles/global.css";
-const { title, description } = Astro.props;
+const { title, description, ogImage } = Astro.props;
 const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as data";
+const desc =
+  description ??
+  "Every WWDC session since 2014 — categories, durations, code snippets, transcripts and trends. Links to Apple, hosts nothing.";
 ---
 
 <!doctype html>
@@ -10,11 +13,12 @@ const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{fullTitle}</title>
-    <meta
-      name="description"
-      content={description ??
-        "Every WWDC session since 2014 — categories, durations, code snippets, transcripts and trends. Links to Apple, hosts nothing."}
-    />
+    <meta name="description" content={desc} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={desc} />
+    <meta property="og:type" content="website" />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogImage && <meta name="twitter:card" content="summary_large_image" />}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -33,6 +37,7 @@ const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as
           <a href="/dispatches/">Dispatches</a>
           <a href="/years/2026/">Years</a>
           <a href="/topics/accessibility-and-inclusion/">Topics</a>
+          <a href="/search/">Search</a>
           <a href="/about/">About</a>
         </nav>
       </header>

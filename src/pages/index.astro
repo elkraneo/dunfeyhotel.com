@@ -3,6 +3,7 @@ import Base from "../layouts/Base.astro";
 import {
   aggregates,
   sessions,
+  resources,
   topics,
   years,
   topicSlug,
@@ -10,13 +11,13 @@ import {
 
 const byYear = aggregates.byYear;
 const totalTalks = sessions.length;
-const totalSnippets = sessions.reduce((n, s) => n + s.codeSnippets.length, 0);
 const totalHours = Math.round(
   Object.values(byYear).reduce((n, y) => n + y.totalDurationSeconds, 0) / 3600
 );
+const totalDocs = resources.length;
 const maxTalks = Math.max(...Object.values(byYear).map((y) => y.talks));
 
-// Topic trend: compare the last three years against the three before.
+// Topic trend: the last three years against the three before.
 const matrix = aggregates.topicYearMatrix;
 const recent = years.slice(-3);
 const prior = years.slice(-6, -3);
@@ -28,26 +29,59 @@ const trends = topics
     return { topic: t, now, before, delta: now - before };
   })
   .sort((a, b) => b.delta - a.delta);
+
+const crossSections = [
+  {
+    label: `Accessibility at WWDC${String(years.at(-1)).slice(2)}`,
+    href: `/observatory/?year=${years.at(-1)}&topics=accessibility-and-inclusion`,
+  },
+  {
+    label: "SwiftUI sample code, 2025",
+    href: "/observatory/?year=2025&topics=swiftui-and-ui-frameworks&kind=samplecode",
+  },
+  {
+    label: "Spatial computing across all years",
+    href: "/observatory/?topics=spatial-computing",
+  },
+  {
+    label: "Machine learning, hours taught",
+    href: "/observatory/?topics=ai-and-machine-learning&measure=hours",
+  },
+];
 ---
 
 <Base>
   <section class="hero">
-    <p class="kicker">The registry · WWDC {years[0]}–{years.at(-1)}</p>
-    <h1>Thirteen years of WWDC, kept like a hotel ledger.</h1>
+    <p class="kicker">Est. 1983, San Mateo · the registry runs {years[0]}–{years.at(-1)}</p>
+    <h1>The conference, kept like a hotel ledger.</h1>
     <p class="lede">
-      Every talk Apple still publishes — its category, duration, code shown on
-      screen, and how it links to everything else. Counted honestly, linked to
-      the source, rehosting nothing.
+      Every WWDC talk Apple still publishes — indexed, cross-referenced and
+      counted honestly. Browse the rooms, or step into the observatory and
+      correlate for yourself. Everything links to the source; nothing is
+      rehosted.
+    </p>
+    <p>
+      <a class="watch" href="/observatory/">Enter the observatory</a>
+      <a class="watch secondary" href="/dispatches/">Read the dispatches</a>
     </p>
     <div class="figures">
-      <div class="figure"><b>{totalTalks.toLocaleString("en")}</b><span>talks indexed</span></div>
-      <div class="figure"><b>{totalHours.toLocaleString("en")}</b><span>hours of video</span></div>
-      <div class="figure"><b>{totalSnippets.toLocaleString("en")}</b><span>timestamped code snippets</span></div>
-      <div class="figure"><b>{topics.length}</b><span>topics</span></div>
+      <div class="figure"><b>{totalTalks.toLocaleString("en")}</b><span>talks</span></div>
+      <div class="figure"><b>{totalHours.toLocaleString("en")}</b><span>hours</span></div>
+      <div class="figure"><b>{years.length}</b><span>conferences</span></div>
+      <div class="figure"><b>{totalDocs.toLocaleString("en")}</b><span>documents referenced</span></div>
     </div>
   </section>
 
-  <section aria-labelledby="registry">
+  <section aria-labelledby="cross-sections">
+    <p class="kicker" id="cross-sections">Start from a cross-section</p>
+    <p class="chip-row">
+      {crossSections.map((c) => (
+        <a class="chip linkchip" href={c.href}>{c.label}</a>
+      ))}
+    </p>
+  </section>
+
+  <section class="block" aria-labelledby="registry">
     <p class="kicker" id="registry">Check-ins by year</p>
     <table class="ledger">
       <thead>
@@ -55,26 +89,28 @@ const trends = topics
           <th scope="col">Year</th>
           <th scope="col" class="num">Talks</th>
           <th scope="col" class="num">Hours</th>
-          <th scope="col" class="num">Snippets</th>
+          <th scope="col" class="num">Transcripts</th>
           <th scope="col" aria-label="Relative volume"></th>
+          <th scope="col">Catalog</th>
         </tr>
       </thead>
       <tbody>
-        {years.map((y) => {
+        {[...years].reverse().map((y) => {
           const row = byYear[y];
           return (
             <tr>
               <td><a href={`/years/${y}/`}>WWDC{String(y).slice(2)}</a></td>
               <td class="num">{row.talks}</td>
               <td class="num">{Math.round(row.totalDurationSeconds / 3600)}</td>
-              <td class="num">{row.codeSnippets || "—"}</td>
-              <td style="width:34%">
+              <td class="num">{row.withTranscript || "—"}</td>
+              <td style="width:30%">
                 <span
                   class="bar"
                   style={`inline-size:${(row.talks / maxTalks) * 100}%`}
                   aria-hidden="true"
                 />
               </td>
+              <td><a class="timestamp-link" href={`/years/${y}/documents/`}>documents</a></td>
             </tr>
           );
         })}
@@ -82,7 +118,7 @@ const trends = topics
     </table>
     <p class="footnote">
       Counts include talks only (videos and sessions), not labs or
-      get-togethers. Years before 2019 reflect the catalog Apple still
+      get-togethers. Years before 2019 reflect only the catalog Apple still
       publishes — not the full conference that took place.
     </p>
   </section>
@@ -98,16 +134,25 @@ const trends = topics
           <th scope="col" class="num">{prior[0]}–{String(prior.at(-1)).slice(2)}</th>
           <th scope="col" class="num">{recent[0]}–{String(recent.at(-1)).slice(2)}</th>
           <th scope="col" class="num">Δ</th>
+          <th scope="col"></th>
         </tr>
       </thead>
       <tbody>
         {trends.map(({ topic, now, before, delta }) => (
           <tr>
-            <td><a href={`/topics/${topicSlug(topic.title)}/`}>{topic.title}</a></td>
+            <td>
+              {topic.glyph && (
+                <img class="topic-glyph" src={topic.glyph} alt="" width="14" height="14" loading="lazy" />
+              )}{" "}
+              <a href={`/topics/${topicSlug(topic.title)}/`}>{topic.title}</a>
+            </td>
             <td class="num">{before}</td>
             <td class="num">{now}</td>
-            <td class="num" style={delta > 0 ? "color:var(--oxblood)" : undefined}>
+            <td class="num" style={delta > 0 ? "color:var(--oxblood);font-weight:600" : undefined}>
               {delta > 0 ? `+${delta}` : delta}
+            </td>
+            <td>
+              <a class="timestamp-link" href={`/observatory/?topics=${topicSlug(topic.title)}`}>observe</a>
             </td>
           </tr>
         ))}

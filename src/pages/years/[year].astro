@@ -1,11 +1,11 @@
 ---
+import SessionCard from "../../components/SessionCard.astro";
 import Base from "../../layouts/Base.astro";
 import {
   events,
   sessions,
   years,
   aggregates,
-  formatDuration,
 } from "../../lib/data.js";
 
 export function getStaticPaths() {
@@ -39,16 +39,15 @@ const next = years[idx + 1];
     </div>
   </section>
 
+  <p class="meta">
+    <a href={`/years/${year}/documents/`}>Related documents catalog</a> ·{" "}
+    <a href={`/years/${year}/documents.tsv`}>.tsv</a> ·{" "}
+    <a href={`/observatory/?year=${year}`}>Open in observatory</a>
+  </p>
+
   <div class="card-grid">
     {talks.map((s) => (
-      <div class="card">
-        <p class="meta">
-          {formatDuration(s.duration)}
-          {s.topics[0] && ` · ${s.topics[0]}`}
-          {s.codeSnippets.length > 0 && ` · ${s.codeSnippets.length} snippets`}
-        </p>
-        <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
-      </div>
+      <SessionCard session={s} showYear={false} />
     ))}
   </div>
 </Base>

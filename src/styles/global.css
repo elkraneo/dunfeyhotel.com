@@ -8,12 +8,12 @@
   --paper: #f5efe3;
   --paper-deep: #ece3d0;
   --ink: #221b13;
-  --ink-soft: #6b5f4e;
+  --ink-soft: #574c3c; /* ≥7:1 on paper */
   --oxblood: #6e2228;
   --oxblood-bright: #8d2f36;
-  --brass: #93702a;
+  --brass: #7d5e20; /* ≥4.5:1 on paper */
   --rule: #d4c7ad;
-  --rule-strong: #b3a384;
+  --rule-strong: #a08f6c;
 
   --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
@@ -238,9 +238,29 @@ main {
 .card .meta,
 .meta {
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   letter-spacing: 0.04em;
   color: var(--ink-soft);
+}
+
+.card-thumb {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule);
+  margin-block-end: 0.55rem;
+  filter: sepia(0.12) contrast(0.98);
+}
+
+.session-art {
+  display: block;
+  max-width: 28rem;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--rule-strong);
+  box-shadow: 0.4rem 0.4rem 0 var(--paper-deep);
+  margin-block-end: 1.2rem;
+  filter: sepia(0.12) contrast(0.98);
 }
 
 .card h3 {
@@ -288,6 +308,32 @@ main {
 
 .watch:hover {
   background: var(--oxblood-bright);
+}
+
+.watch.secondary {
+  background: transparent;
+  color: var(--oxblood);
+  border: 1px solid var(--oxblood);
+  margin-left: 0.6rem;
+}
+
+.watch.secondary:hover {
+  background: var(--paper-deep);
+}
+
+.topic-glyph {
+  vertical-align: -0.12em;
+  opacity: 0.85;
+}
+
+.linkchip {
+  text-decoration: none;
+}
+
+.linkchip:hover {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
 }
 
 section.block {

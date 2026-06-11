@@ -1,0 +1,64 @@
+---
+import Base from "../layouts/Base.astro";
+---
+
+<Base
+  title="Search"
+  description="Full-text search across every session, code snippet, document and dispatch."
+>
+  <section class="hero">
+    <p class="kicker">The concierge</p>
+    <h1>Ask for anything in the registry.</h1>
+    <p class="lede">
+      Searches titles, descriptions, the code shown on screen, document
+      catalogs and dispatches. Try a framework, an API name, or a phrase you
+      remember from a session.
+    </p>
+  </section>
+
+  <div id="search"></div>
+
+  <link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
+  <script is:inline src="/pagefind/pagefind-ui.js"></script>
+  <script is:inline>
+    window.addEventListener("DOMContentLoaded", () => {
+      if (typeof PagefindUI !== "undefined") {
+        new PagefindUI({
+          element: "#search",
+          showSubResults: true,
+          showImages: false,
+          pageSize: 10,
+        });
+        const input = document.querySelector("#search input");
+        if (input) input.focus();
+      } else {
+        document.getElementById("search").innerHTML =
+          "<p>Search index not built yet — run <code>npm run build</code> (Pagefind indexes the built site).</p>";
+      }
+    });
+  </script>
+</Base>
+
+<style is:global>
+  #search {
+    --pagefind-ui-scale: 0.9;
+    --pagefind-ui-primary: var(--oxblood);
+    --pagefind-ui-text: var(--ink);
+    --pagefind-ui-background: var(--paper);
+    --pagefind-ui-border: var(--rule-strong);
+    --pagefind-ui-tag: var(--paper-deep);
+    --pagefind-ui-border-width: 1px;
+    --pagefind-ui-border-radius: 2px;
+    --pagefind-ui-font: var(--font-display);
+    max-width: var(--measure);
+  }
+
+  #search .pagefind-ui__search-input {
+    font-family: var(--font-display);
+    background: var(--paper);
+  }
+
+  #search .pagefind-ui__result-title {
+    font-weight: 560;
+  }
+</style>

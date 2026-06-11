@@ -61,8 +61,21 @@ const topics = contents.topics.map((t) => ({
   id: t.id,
   title: t.title,
   sfSymbolName: t.sfSymbolName ?? null,
+  glyph: t.svgURL ?? null,
 }));
 const topicTitle = new Map(topics.map((t) => [t.id, t.title]));
+
+// Session artwork lives on Apple's CDN under the EVENT's imagesPath:
+// {imagesPath}/{staticContentId}/{staticContentId}_wide_{w}x{h}_2x.jpg
+const eventImagesPath = new Map(
+  contents.events.map((e) => [e.id, e.imagesPath ?? null])
+);
+const artwork = (c, size) => {
+  const base = eventImagesPath.get(c.eventId);
+  return base && c.staticContentId
+    ? `${base}/${c.staticContentId}/${c.staticContentId}_wide_${size}_2x.jpg`
+    : null;
+};
 
 const sessions = contents.contents
   .filter((c) => c.eventId.startsWith("wwdc") && TALK_TYPES.has(c.type))
@@ -82,6 +95,8 @@ const sessions = contents.contents
     resourceIds: c.related?.resources ?? [],
     platforms: c.platforms ?? [],
     webPermalink: c.webPermalink ?? null,
+    thumb: artwork(c, "250x141"),
+    ogImage: artwork(c, "900x506"),
     hasTranscript: transcriptIds.has(c.id),
     chapters: c.media?.chapters ?? [],
     codeSnippets: (c.codeSnippets ?? []).map((s) => ({
@@ -190,8 +205,27 @@ await write("events.json", events);
 await write("topics.json", topics);
 await write("sessions.json", sessions);
 await write("resources.json", resources);
+// Compact per-item index for the observatory's actionable cross-section:
+// every session and resource, minimal fields, short keys.
+const observatoryIndex = {
+  sessions: sessions.map((s) => ({
+    id: s.id,
+    t: s.title,
+    y: s.year,
+    k: s.topicIds,
+    d: s.duration ?? 0,
+    c: s.codeSnippets.length,
+    r: s.resourceIds,
+    img: s.thumb,
+  })),
+  resources: resources
+    .filter((r) => r.type && r.title)
+    .map((r) => ({ id: r.id, type: r.type, t: r.title, u: r.url })),
+};
+
 await write("aggregates.json", aggregates);
 await write("explorer.json", explorer);
+await write("observatory-index.json", observatoryIndex);
 
 console.log(`Normalized ${snapName}:`);
 console.log(`  ${events.length} events, ${topics.length} topics, ${sessions.length} talks, ${resources.length} resources`);

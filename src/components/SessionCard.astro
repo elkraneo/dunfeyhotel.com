@@ -1,0 +1,18 @@
+---
+import { formatDuration } from "../lib/data.js";
+
+const { session: s, showYear = true } = Astro.props;
+---
+
+<div class="card">
+  {s.thumb && (
+    <a href={`/sessions/${s.id}/`} tabindex="-1" aria-hidden="true">
+      <img class="card-thumb" src={s.thumb} alt="" loading="lazy" width="250" height="141" />
+    </a>
+  )}
+  <p class="meta">
+    {showYear && `WWDC${String(s.year).slice(2)} · `}{formatDuration(s.duration)}
+    {s.codeSnippets?.length > 0 && ` · ${s.codeSnippets.length} snippets`}
+  </p>
+  <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
+</div>
