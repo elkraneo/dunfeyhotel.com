@@ -50,6 +50,7 @@ const total = new Set(
   title={`${event.name} related documents`}
   description={`All ${total} documents, sample code projects and downloads referenced at ${event.name}, grouped by topic.`}
 >
+  <p class="visually-hidden"><span data-pagefind-filter="year">{String(year)}</span></p>
   <section class="hero">
     <p class="kicker"><a href={`/years/${year}/`}>{event.name}</a> · generated catalog</p>
     <h1>{event.name} related documents</h1>

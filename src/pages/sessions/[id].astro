@@ -22,6 +22,12 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
 
 <Base title={s.title} description={s.description ?? undefined} ogImage={s.ogImage}>
   <article>
+    <p class="visually-hidden">
+      <span data-pagefind-filter="year">{String(s.year)}</span>
+      {s.topics.map((t) => (
+        <span data-pagefind-filter="topic">{t}</span>
+      ))}
+    </p>
     <header class="session-head">
       {s.thumb && (
         <img

@@ -12,78 +12,134 @@ import Base from "../layouts/Base.astro";
     <h1>Ask for anything in the registry.</h1>
     <p class="lede">
       Type in the cross-section bar above — full text of titles, descriptions,
-      on-screen code, catalogs and dispatches.
+      on-screen code, catalogs and dispatches. Year and topic chips narrow the
+      results.
     </p>
   </section>
 
-  <div id="search" data-dh-reactive></div>
+  <p class="meta" id="s-count" role="status"></p>
+  <ol class="plain search-results" id="s-results" data-dh-reactive></ol>
+  <p><button type="button" class="watch secondary" id="s-more" hidden>More results</button></p>
 
-  <link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
-  <script is:inline src="/pagefind/pagefind-ui.js"></script>
-  <script is:inline>
-    window.addEventListener("DOMContentLoaded", () => {
-      if (typeof PagefindUI !== "undefined") {
-        const ui = new PagefindUI({
-          element: "#search",
-          showSubResults: true,
-          showImages: false,
-          pageSize: 10,
-        });
-        // The cross-section bar is the only input: it drives Pagefind live.
-        const run = () => ui.triggerSearch(window.dhFilter?.q ?? "");
-        run();
-        addEventListener("dh-filter", run);
-        const barInput = document.getElementById("dh-q");
-        if (barInput) barInput.focus();
-      } else {
-        document.getElementById("search").innerHTML =
-          "<p>Search index not built yet — run <code>npm run build</code> (Pagefind indexes the built site).</p>";
-      }
+  <script is:inline type="module">
+    const countEl = document.getElementById("s-count");
+    const resultsEl = document.getElementById("s-results");
+    const moreEl = document.getElementById("s-more");
+    const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+
+    let pagefind = null;
+    try {
+      pagefind = await import("/pagefind/pagefind.js");
+      pagefind.init();
+    } catch {
+      countEl.textContent = "Search index not built yet — run npm run build.";
+    }
+
+    const PAGE = 12;
+    let shown = PAGE;
+    let lastResults = [];
+
+    moreEl.addEventListener("click", () => {
+      shown += PAGE;
+      renderList();
     });
+
+    async function renderList() {
+      const slice = lastResults.slice(0, shown);
+      const items = await Promise.all(slice.map((r) => r.data()));
+      resultsEl.replaceChildren(
+        ...items.map((d) => {
+          const li = document.createElement("li");
+          const h = document.createElement("h3");
+          const a = document.createElement("a");
+          a.href = d.url;
+          a.textContent = d.meta?.title ?? d.url;
+          h.append(a);
+          const ex = document.createElement("p");
+          ex.className = "excerpt";
+          ex.innerHTML = d.excerpt ?? "";
+          li.append(h, ex);
+          for (const sub of (d.sub_results ?? []).slice(0, 2)) {
+            if (sub.url === d.url) continue;
+            const sp = document.createElement("p");
+            sp.className = "excerpt sub";
+            const sa = document.createElement("a");
+            sa.href = sub.url;
+            sa.textContent = `↳ ${sub.title}`;
+            sp.append(sa, document.createElement("br"));
+            const se = document.createElement("span");
+            se.innerHTML = sub.excerpt ?? "";
+            sp.append(se);
+            li.append(sp);
+          }
+          return li;
+        })
+      );
+      moreEl.hidden = shown >= lastResults.length;
+    }
+
+    let timer;
+    async function run() {
+      if (!pagefind) return;
+      const f = F();
+      const filters = {};
+      if (f.years.size) filters.year = [...f.years].map(String);
+      if (f.topics.size)
+        filters.topic = [...f.topics]
+          .map((id) => window.dhTopicTitles?.[id])
+          .filter(Boolean);
+      const q = f.q || null;
+      if (!q && !Object.keys(filters).length) {
+        countEl.textContent = "Type, or press a chip — the registry answers.";
+        resultsEl.replaceChildren();
+        moreEl.hidden = true;
+        return;
+      }
+      const res = await pagefind.search(q, Object.keys(filters).length ? { filters } : {});
+      lastResults = res.results;
+      shown = PAGE;
+      countEl.textContent = `${res.results.length.toLocaleString("en")} results`;
+      renderList();
+    }
+
+    addEventListener("dh-filter", () => {
+      clearTimeout(timer);
+      timer = setTimeout(run, 120);
+    });
+    run();
+    document.getElementById("dh-q")?.focus();
   </script>
 </Base>
 
 <style is:global>
-  #search {
-    --pagefind-ui-scale: 0.9;
-    --pagefind-ui-primary: var(--oxblood);
-    --pagefind-ui-text: var(--ink);
-    --pagefind-ui-background: var(--paper);
-    --pagefind-ui-border: var(--rule-strong);
-    --pagefind-ui-tag: var(--paper-deep);
-    --pagefind-ui-border-width: 1px;
-    --pagefind-ui-border-radius: 2px;
-    --pagefind-ui-font: var(--font-display);
+  .search-results {
     max-width: var(--measure);
   }
 
-  #search .pagefind-ui__search-input {
-    font-family: var(--font-display);
-    background: var(--paper);
+  .search-results li {
+    padding-block: 0.9rem;
+    border-bottom: 1px dotted var(--rule-strong);
   }
 
-  #search .pagefind-ui__result-title {
-    font-weight: 560;
+  .search-results h3 {
+    font-size: 1.08rem;
+    margin: 0 0 0.25rem;
   }
 
-  #search mark {
+  .search-results .excerpt {
+    margin: 0.15rem 0;
+    font-size: 0.92rem;
+    color: var(--ink-soft);
+  }
+
+  .search-results .excerpt.sub {
+    margin-inline-start: 1.1rem;
+  }
+
+  .search-results mark {
     background: transparent;
-    color: inherit;
+    color: var(--ink);
     font-weight: 650;
     border-bottom: 2px solid var(--brass);
-  }
-
-  #search .pagefind-ui__search-clear {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--oxblood);
-  }
-
-  /* The bar is the input; Pagefind's own form stays hidden. */
-  #search .pagefind-ui__form > .pagefind-ui__search-input,
-  #search .pagefind-ui__search-clear {
-    display: none;
   }
 </style>
