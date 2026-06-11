@@ -492,7 +492,7 @@ import Base from "../layouts/Base.astro";
           height: 340,
           marginLeft: 46,
           style: { fontSize: "12.5px" },
-          x: { tickFormat: shortYear, label: null },
+          x: { tickFormat: shortYear, label: null, ticks: years },
           y: { label: m.label, grid: true, nice: true },
           marks: [
             F().years.size
