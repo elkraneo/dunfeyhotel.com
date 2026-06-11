@@ -1,0 +1,117 @@
+---
+import Base from "../layouts/Base.astro";
+import {
+  aggregates,
+  sessions,
+  topics,
+  years,
+  topicSlug,
+} from "../lib/data.js";
+
+const byYear = aggregates.byYear;
+const totalTalks = sessions.length;
+const totalSnippets = sessions.reduce((n, s) => n + s.codeSnippets.length, 0);
+const totalHours = Math.round(
+  Object.values(byYear).reduce((n, y) => n + y.totalDurationSeconds, 0) / 3600
+);
+const maxTalks = Math.max(...Object.values(byYear).map((y) => y.talks));
+
+// Topic trend: compare the last three years against the three before.
+const matrix = aggregates.topicYearMatrix;
+const recent = years.slice(-3);
+const prior = years.slice(-6, -3);
+const trends = topics
+  .map((t) => {
+    const row = matrix[t.title] ?? {};
+    const now = recent.reduce((n, y) => n + (row[y] ?? 0), 0);
+    const before = prior.reduce((n, y) => n + (row[y] ?? 0), 0);
+    return { topic: t, now, before, delta: now - before };
+  })
+  .sort((a, b) => b.delta - a.delta);
+---
+
+<Base>
+  <section class="hero">
+    <p class="kicker">The registry · WWDC {years[0]}–{years.at(-1)}</p>
+    <h1>Thirteen years of WWDC, kept like a hotel ledger.</h1>
+    <p class="lede">
+      Every talk Apple still publishes — its category, duration, code shown on
+      screen, and how it links to everything else. Counted honestly, linked to
+      the source, rehosting nothing.
+    </p>
+    <div class="figures">
+      <div class="figure"><b>{totalTalks.toLocaleString("en")}</b><span>talks indexed</span></div>
+      <div class="figure"><b>{totalHours.toLocaleString("en")}</b><span>hours of video</span></div>
+      <div class="figure"><b>{totalSnippets.toLocaleString("en")}</b><span>timestamped code snippets</span></div>
+      <div class="figure"><b>{topics.length}</b><span>topics</span></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="registry">
+    <p class="kicker" id="registry">Check-ins by year</p>
+    <table class="ledger">
+      <thead>
+        <tr>
+          <th scope="col">Year</th>
+          <th scope="col" class="num">Talks</th>
+          <th scope="col" class="num">Hours</th>
+          <th scope="col" class="num">Snippets</th>
+          <th scope="col" aria-label="Relative volume"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {years.map((y) => {
+          const row = byYear[y];
+          return (
+            <tr>
+              <td><a href={`/years/${y}/`}>WWDC{String(y).slice(2)}</a></td>
+              <td class="num">{row.talks}</td>
+              <td class="num">{Math.round(row.totalDurationSeconds / 3600)}</td>
+              <td class="num">{row.codeSnippets || "—"}</td>
+              <td style="width:34%">
+                <span
+                  class="bar"
+                  style={`inline-size:${(row.talks / maxTalks) * 100}%`}
+                  aria-hidden="true"
+                />
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+    <p class="footnote">
+      Counts include talks only (videos and sessions), not labs or
+      get-togethers. Years before 2019 reflect the catalog Apple still
+      publishes — not the full conference that took place.
+    </p>
+  </section>
+
+  <section class="block" aria-labelledby="trends">
+    <p class="kicker" id="trends">
+      Topic movement · {prior[0]}–{prior.at(-1)} vs {recent[0]}–{recent.at(-1)}
+    </p>
+    <table class="ledger">
+      <thead>
+        <tr>
+          <th scope="col">Topic</th>
+          <th scope="col" class="num">{prior[0]}–{String(prior.at(-1)).slice(2)}</th>
+          <th scope="col" class="num">{recent[0]}–{String(recent.at(-1)).slice(2)}</th>
+          <th scope="col" class="num">Δ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {trends.map(({ topic, now, before, delta }) => (
+          <tr>
+            <td><a href={`/topics/${topicSlug(topic.title)}/`}>{topic.title}</a></td>
+            <td class="num">{before}</td>
+            <td class="num">{now}</td>
+            <td class="num" style={delta > 0 ? "color:var(--oxblood)" : undefined}>
+              {delta > 0 ? `+${delta}` : delta}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </section>
+</Base>

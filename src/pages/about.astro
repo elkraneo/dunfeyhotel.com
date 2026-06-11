@@ -1,0 +1,36 @@
+---
+import Base from "../layouts/Base.astro";
+import { aggregates } from "../lib/data.js";
+---
+
+<Base title="About">
+  <article class="session-head">
+    <p class="kicker">About</p>
+    <h1>A ledger, not a library.</h1>
+    <p>
+      In 1983 Apple gathered its developers at the Dunfey Hotel in San Mateo —
+      the conference that became WWDC. This site keeps the modern record: every
+      session Apple still publishes, indexed by category, duration, the code
+      shown on screen, and how each session links to the others.
+    </p>
+    <p>
+      <strong>Everything links to the source.</strong> Videos, transcripts,
+      sample code and documentation live at
+      <a href="https://developer.apple.com">developer.apple.com</a>; this site
+      stores metadata and aggregates only, for research and education,
+      non-commercially.
+    </p>
+    <p>
+      <strong>Counted honestly.</strong> Apple revises its catalog over time —
+      sessions are removed, labs are pruned, history shifts. Counts here come
+      from snapshot {aggregates.snapshotId} of Apple's public feed (updated
+      {aggregates.snapshotUpdated.slice(0, 10)}), and years before 2019 reflect
+      what remains published, not the full conference that took place.
+    </p>
+    <p>
+      Built as an open dataset and static site. The pipeline and source are on
+      GitHub; the data is fetched from Apple's CDN at build time and never
+      committed.
+    </p>
+  </article>
+</Base>

@@ -1,0 +1,83 @@
+---
+import Base from "../../layouts/Base.astro";
+import {
+  topics,
+  sessions,
+  years,
+  aggregates,
+  topicSlug,
+  formatDuration,
+} from "../../lib/data.js";
+
+export function getStaticPaths() {
+  return topics.map((t) => ({ params: { slug: topicSlug(t.title) }, props: { topic: t } }));
+}
+
+const { topic } = Astro.props;
+const talks = sessions.filter((s) => s.topicIds.includes(topic.id));
+const row = aggregates.topicYearMatrix[topic.title] ?? {};
+const counts = years.map((y) => row[y] ?? 0);
+const max = Math.max(...counts, 1);
+
+// Build-time sparkline: one bar per year, pure SVG, no client JS.
+const W = 360;
+const H = 64;
+const bw = W / years.length;
+
+const byYearGroups = years
+  .map((y) => ({ year: y, talks: talks.filter((s) => s.year === y) }))
+  .filter((g) => g.talks.length)
+  .reverse();
+---
+
+<Base title={topic.title}>
+  <section class="hero">
+    <p class="kicker">Topic</p>
+    <h1>{topic.title}</h1>
+    <div class="figures">
+      <div class="figure"><b>{talks.length}</b><span>talks since {years[0]}</span></div>
+      <div class="figure">
+        <b>{Math.round(talks.reduce((n, s) => n + (s.duration ?? 0), 0) / 3600)}</b>
+        <span>hours</span>
+      </div>
+    </div>
+    <svg
+      class="sparkline"
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label={`Talks per year: ${years.map((y, i) => `${y}: ${counts[i]}`).join(", ")}`}
+    >
+      {counts.map((c, i) => (
+        <rect
+          x={i * bw + 2}
+          y={H - (c / max) * (H - 14)}
+          width={bw - 4}
+          height={(c / max) * (H - 14)}
+          fill={c ? "var(--oxblood)" : "var(--rule)"}
+        />
+      ))}
+    </svg>
+    <p class="meta">{years[0]} → {years.at(-1)}</p>
+  </section>
+
+  {byYearGroups.map(({ year, talks: group }) => (
+    <section class="block" aria-labelledby={`y-${year}`}>
+      <p class="kicker" id={`y-${year}`}>
+        <a href={`/years/${year}/`}>WWDC{String(year).slice(2)}</a> · {group.length}
+      </p>
+      <div class="card-grid">
+        {group.map((s) => (
+          <div class="card">
+            <p class="meta">
+              {formatDuration(s.duration)}
+              {s.codeSnippets.length > 0 && ` · ${s.codeSnippets.length} snippets`}
+            </p>
+            <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
+          </div>
+        ))}
+      </div>
+    </section>
+  ))}
+</Base>

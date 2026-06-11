@@ -1,0 +1,54 @@
+---
+import Base from "../../layouts/Base.astro";
+import {
+  events,
+  sessions,
+  years,
+  aggregates,
+  formatDuration,
+} from "../../lib/data.js";
+
+export function getStaticPaths() {
+  return events.map((e) => ({ params: { year: String(e.year) }, props: { event: e } }));
+}
+
+const { event } = Astro.props;
+const year = event.year;
+const talks = sessions
+  .filter((s) => s.year === year)
+  .sort((a, b) => a.title.localeCompare(b.title));
+const stats = aggregates.byYear[year];
+const idx = years.indexOf(year);
+const prev = years[idx - 1];
+const next = years[idx + 1];
+---
+
+<Base title={event.name}>
+  <section class="hero">
+    <p class="kicker">
+      {prev && <a href={`/years/${prev}/`}>← {prev}</a>}
+      {" The registry "}
+      {next && <a href={`/years/${next}/`}>{next} →</a>}
+    </p>
+    <h1>{event.name}</h1>
+    <div class="figures">
+      <div class="figure"><b>{stats.talks}</b><span>talks</span></div>
+      <div class="figure"><b>{Math.round(stats.totalDurationSeconds / 3600)}</b><span>hours</span></div>
+      <div class="figure"><b>{stats.codeSnippets}</b><span>code snippets</span></div>
+      <div class="figure"><b>{stats.withTranscript}</b><span>with transcripts</span></div>
+    </div>
+  </section>
+
+  <div class="card-grid">
+    {talks.map((s) => (
+      <div class="card">
+        <p class="meta">
+          {formatDuration(s.duration)}
+          {s.topics[0] && ` · ${s.topics[0]}`}
+          {s.codeSnippets.length > 0 && ` · ${s.codeSnippets.length} snippets`}
+        </p>
+        <h3><a href={`/sessions/${s.id}/`}>{s.title}</a></h3>
+      </div>
+    ))}
+  </div>
+</Base>

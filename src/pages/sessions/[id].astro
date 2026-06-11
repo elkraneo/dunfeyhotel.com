@@ -1,0 +1,117 @@
+---
+import Base from "../../layouts/Base.astro";
+import {
+  sessions,
+  sessionById,
+  resourceById,
+  formatDuration,
+  formatTimestamp,
+  timeLink,
+  topicSlug,
+} from "../../lib/data.js";
+
+export function getStaticPaths() {
+  return sessions.map((s) => ({ params: { id: s.id }, props: { session: s } }));
+}
+
+const { session: s } = Astro.props;
+const related = s.related.map((id) => sessionById.get(id)).filter(Boolean);
+const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
+---
+
+<Base title={s.title} description={s.description ?? undefined}>
+  <article>
+    <header class="session-head">
+      <p class="kicker">
+        <a href={`/years/${s.year}/`}>WWDC{String(s.year).slice(2)}</a> ·
+        {formatDuration(s.duration)} ·
+        {s.topics.map((t, i) => (
+          <>
+            {i > 0 && " / "}
+            <a href={`/topics/${topicSlug(t)}/`}>{t}</a>
+          </>
+        ))}
+      </p>
+      <h1>{s.title}</h1>
+      {s.description && <p class="lede">{s.description}</p>}
+      <a class="watch" href={s.webPermalink} rel="external">
+        Watch at developer.apple.com ↗
+      </a>
+      {s.hasTranscript && (
+        <p class="meta">
+          Transcript available on the session page at Apple (full text searchable
+          there).
+        </p>
+      )}
+    </header>
+
+    {s.chapters.length > 0 && (
+      <section class="block" aria-labelledby={`chapters-${s.id}`}>
+        <p class="kicker" id={`chapters-${s.id}`}>Chapters</p>
+        <ul class="plain">
+          {s.chapters.map((c) => (
+            <li>
+              <a class="timestamp-link" href={timeLink(s, c.start)} rel="external">
+                {formatTimestamp(c.start)}
+              </a>
+              {" — "}
+              {c.title}
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {s.codeSnippets.length > 0 && (
+      <section class="block" aria-labelledby={`code-${s.id}`}>
+        <p class="kicker" id={`code-${s.id}`}>
+          Code shown on screen · {s.codeSnippets.length} snippets
+        </p>
+        {s.codeSnippets.map((snip) => (
+          <details class="snippet">
+            <summary>
+              {snip.title}
+              <span class="snippet-meta">
+                {snip.language ?? "code"} ·
+                <a href={timeLink(s, snip.startTimeSeconds)} rel="external">
+                  at {formatTimestamp(snip.startTimeSeconds ?? 0)} ↗
+                </a>
+              </span>
+            </summary>
+            <pre><code>{snip.code}</code></pre>
+          </details>
+        ))}
+      </section>
+    )}
+
+    {res.length > 0 && (
+      <section class="block" aria-labelledby={`resources-${s.id}`}>
+        <p class="kicker" id={`resources-${s.id}`}>Resources</p>
+        <ul class="plain">
+          {res.map((r) => (
+            <li>
+              <span class="meta">[{r.type}]</span>{" "}
+              <a href={r.url} rel="external">{r.title}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+    {related.length > 0 && (
+      <section class="block" aria-labelledby={`related-${s.id}`}>
+        <p class="kicker" id={`related-${s.id}`}>Related sessions</p>
+        <div class="card-grid">
+          {related.map((r) => (
+            <div class="card">
+              <p class="meta">
+                WWDC{String(r.year).slice(2)} · {formatDuration(r.duration)}
+              </p>
+              <h3><a href={`/sessions/${r.id}/`}>{r.title}</a></h3>
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+  </article>
+</Base>

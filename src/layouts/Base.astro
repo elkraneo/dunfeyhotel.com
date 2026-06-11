@@ -1,0 +1,54 @@
+---
+import "../styles/global.css";
+const { title, description } = Astro.props;
+const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as data";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta
+      name="description"
+      content={description ??
+        "Every WWDC session since 2014 — categories, durations, code snippets, transcripts and trends. Links to Apple, hosts nothing."}
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..700,0..100,0..1&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="shell">
+      <header class="masthead">
+        <a class="wordmark" href="/">Dunfey<span class="amp"> · </span>Hotel</a>
+        <span class="tagline">WWDC as data, est. 1983</span>
+        <nav aria-label="Primary">
+          <a href="/years/2026/">Years</a>
+          <a href="/topics/accessibility-and-inclusion/">Topics</a>
+          <a href="/about/">About</a>
+        </nav>
+      </header>
+      <main id="main">
+        <slot />
+      </main>
+      <footer class="colophon">
+        <p>
+          An independent, non-commercial index for research and education. All
+          videos, transcripts, code and resources belong to Apple Inc. and are
+          linked at <a href="https://developer.apple.com">developer.apple.com</a>
+          — nothing is rehosted here.
+        </p>
+        <p>
+          Named for the Dunfey Hotel in San Mateo, where Apple held its first
+          developer conference.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
