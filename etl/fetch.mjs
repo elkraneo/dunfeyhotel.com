@@ -42,8 +42,9 @@ try {
 await mkdir(snapDir, { recursive: true });
 await writeFile(join(snapDir, "contents.json"), JSON.stringify(contents));
 
+const LANGS = ["eng", "jpn", "kor", "zho", "fra", "spa", "por"];
 const extras = [
-  "transcript-manifest-eng.json",
+  ...LANGS.map((l) => `transcript-manifest-${l}.json`),
   "config.json",
   "articles.json",
   "discover.json",

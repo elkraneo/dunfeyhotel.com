@@ -67,10 +67,22 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
       <a class="watch" href={s.webPermalink} rel="external">
         Watch at developer.apple.com ↗
       </a>
-      {s.hasTranscript && (
-        <p class="meta">
-          Transcript available on the session page at Apple (full text searchable
-          there).
+      {Object.keys(s.transcripts).length > 0 && (
+        <p
+          class="transcript-actions meta"
+          id="transcript-actions"
+          data-sid={s.id}
+          data-trs={JSON.stringify(
+            Object.fromEntries(
+              Object.entries(s.transcripts).map(([l, u]) => [l, u.split("/").at(-2)])
+            )
+          )}
+        >
+          Transcript
+          <select class="theme-select" data-lang aria-label="Transcript language"></select>
+          <button type="button" class="chip" data-dl="srt">↓ .srt</button>
+          <button type="button" class="chip" data-dl="txt">↓ .txt</button>
+          <a class="timestamp-link" href="/transcripts/">all transcripts</a>
         </p>
       )}
     </header>
@@ -140,3 +152,29 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
     )}
   </article>
 </Base>
+
+<script>
+  import { LANG_NAMES, downloadTranscript } from "../../lib/transcript-client.js";
+
+  const el = document.getElementById("transcript-actions");
+  if (el) {
+    const sid = el.dataset.sid;
+    const trs = JSON.parse(el.dataset.trs);
+    const langs = Object.keys(trs);
+    langs.sort((a, b) => (a === "eng" ? -1 : b === "eng" ? 1 : a.localeCompare(b)));
+    const sel = el.querySelector("[data-lang]");
+    sel.replaceChildren(
+      ...langs.map((l) => {
+        const o = document.createElement("option");
+        o.value = l;
+        o.textContent = LANG_NAMES[l] ?? l;
+        return o;
+      })
+    );
+    el.querySelectorAll("[data-dl]").forEach((b) =>
+      b.addEventListener("click", (e) =>
+        downloadTranscript(sid, trs[sel.value], e.currentTarget.dataset.dl, e.currentTarget)
+      )
+    );
+  }
+</script>

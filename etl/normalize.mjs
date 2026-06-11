@@ -32,20 +32,27 @@ const snapDir = join(rawRoot, snapName);
 
 const contents = JSON.parse(await readFile(join(snapDir, "contents.json"), "utf8"));
 
+// Transcript manifests, one per language Apple publishes.
+const LANGS = ["eng", "jpn", "kor", "zho", "fra", "spa", "por"];
+const transcriptsByLang = new Map();
+for (const lang of LANGS) {
+  try {
+    const m = JSON.parse(
+      await readFile(join(snapDir, `transcript-manifest-${lang}.json`), "utf8")
+    );
+    transcriptsByLang.set(
+      lang,
+      new Map(Object.entries(m.individual ?? {}).map(([id, v]) => [id, v.url ?? null]))
+    );
+  } catch {}
+}
+
 // Apple's official YouTube uploads (built by etl/youtube.mjs, committed).
 let youtubeMap = {};
 try {
   youtubeMap = JSON.parse(await readFile(join(here, "youtube-map.json"), "utf8"));
 } catch {}
-let transcriptIds = new Set();
-let transcriptUrls = new Map();
-try {
-  const manifest = JSON.parse(await readFile(join(snapDir, "transcript-manifest-eng.json"), "utf8"));
-  transcriptIds = new Set(Object.keys(manifest.individual ?? {}));
-  transcriptUrls = new Map(
-    Object.entries(manifest.individual ?? {}).map(([id, v]) => [id, v.url ?? null])
-  );
-} catch {}
+
 
 // Typographic apostrophes for prose fields (never applied to code).
 const typo = (v) => (typeof v === "string" ? v.replace(/'/g, "’") : v);
@@ -110,8 +117,13 @@ const sessions = contents.contents
     webPermalink: c.webPermalink ?? null,
     thumb: artwork(c, "250x141"),
     ogImage: artwork(c, "900x506"),
-    hasTranscript: transcriptIds.has(c.id),
-    transcriptUrl: transcriptUrls.get(c.id) ?? null,
+    hasTranscript: [...transcriptsByLang.values()].some((m) => m.has(c.id)),
+    // {lang: url} for every language with a transcript of this session.
+    transcripts: Object.fromEntries(
+      [...transcriptsByLang.entries()]
+        .filter(([, m]) => m.get(c.id))
+        .map(([lang, m]) => [lang, m.get(c.id)])
+    ),
     youtubeId: youtubeMap[c.id] ?? null,
     chapters: c.media?.chapters ?? [],
     codeSnippets: (c.codeSnippets ?? []).map((s) => ({
@@ -275,7 +287,13 @@ const observatoryIndex = {
     r: s.resourceIds,
     img: s.thumb,
     tr: s.hasTranscript ? 1 : 0,
-    trUrl: s.transcriptUrl,
+    // lang → "{lang}_{hash}" path segment; full URL is reconstructable.
+    trs: Object.fromEntries(
+      Object.entries(s.transcripts).map(([lang, url]) => {
+        const seg = url.split("/").at(-2);
+        return [lang, seg];
+      })
+    ),
     u: s.webPermalink,
   })),
   resources: resources

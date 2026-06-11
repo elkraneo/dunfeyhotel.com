@@ -21,6 +21,13 @@ const total = sessions.filter((s) => s.hasTranscript).length;
     </p>
   </section>
 
+  <div class="controls" role="group" aria-label="Transcript options">
+    <div class="lens">
+      <label class="kicker" for="t-lang">Language</label>
+      <select id="t-lang" class="theme-select"></select>
+    </div>
+  </div>
+
   <p class="meta" id="t-count" role="status"></p>
   <table class="ledger" data-dh-reactive>
     <caption class="visually-hidden">Sessions with transcripts</caption>
@@ -41,14 +48,31 @@ const total = sessions.filter((s) => s.hasTranscript).length;
   <script>
     import index from "../../data/normalized/observatory-index.json";
     import explorer from "../../data/normalized/explorer.json";
+    import { LANG_NAMES, downloadTranscript } from "../lib/transcript-client.js";
 
     const topicMeta = new Map(explorer.topics.map((t) => [t.id, t]));
     const all = index.sessions
-      .filter((s) => s.tr && s.trUrl)
+      .filter((s) => s.tr && Object.keys(s.trs ?? {}).length)
       .sort((a, b) => b.y - a.y || a.t.localeCompare(b.t));
-    const years = [...new Set(all.map((s) => s.y))].sort();
 
-    const state = { expanded: false };
+    const langs = [...new Set(all.flatMap((s) => Object.keys(s.trs)))];
+    langs.sort((a, b) => (a === "eng" ? -1 : b === "eng" ? 1 : a.localeCompare(b)));
+    const langSel = document.getElementById("t-lang");
+    langSel.replaceChildren(
+      ...langs.map((l) => {
+        const o = document.createElement("option");
+        o.value = l;
+        o.textContent = LANG_NAMES[l] ?? l;
+        return o;
+      })
+    );
+    langSel.addEventListener("change", () => {
+      state.lang = langSel.value;
+      state.expanded = false;
+      render();
+    });
+
+    const state = { lang: "eng", expanded: false };
     const PREVIEW = 50;
     const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
 
@@ -61,59 +85,17 @@ const total = sessions.filter((s) => s.hasTranscript).length;
       render();
     });
 
-    // ——— transcript conversion (parity with the app, improved cue ends:
-    // each cue ends where the next begins; the last gets +4s) ———
-    const pad = (n, w = 2) => String(n).padStart(w, "0");
-    const stamp = (sec) =>
-      `${pad(Math.floor(sec / 3600))}:${pad(Math.floor((sec % 3600) / 60))}:${pad(Math.floor(sec % 60))},${pad(Math.round((sec % 1) * 1000), 3)}`;
-
-    const entriesOf = (json) => Object.values(json)[0]?.transcript ?? [];
-
-    const toSRT = (json) => {
-      const entries = entriesOf(json);
-      return entries
-        .map(([time, text], i) => {
-          const end = i + 1 < entries.length ? entries[i + 1][0] : time + 4;
-          return `${i + 1}\n${stamp(time)} --> ${stamp(end)}\n${String(text).trim()}\n`;
-        })
-        .join("\n");
-    };
-
-    const toTXT = (json) =>
-      entriesOf(json)
-        .map(([, text]) => String(text))
-        .join("")
-        .replace(/\n{3,}/g, "\n\n")
-        .trim();
-
-    async function download(s, kind, button) {
-      button.disabled = true;
-      try {
-        const json = await fetch(s.trUrl).then((r) => r.json());
-        const content = kind === "srt" ? toSRT(json) : toTXT(json);
-        const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `${s.id}.${kind === "srt" ? "srt" : "txt"}`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-      } catch {
-        open(s.trUrl, "_blank");
-      } finally {
-        button.disabled = false;
-      }
-    }
-
     function render() {
       const f = F();
       const q = f.q.toLowerCase();
       const list = all.filter(
         (s) =>
+          s.trs[state.lang] &&
           (f.years.size === 0 || f.years.has(s.y)) &&
           (f.topics.size === 0 || s.k.some((id) => f.topics.has(id))) &&
           (!q || s.t.toLowerCase().includes(q) || s.id.includes(q))
       );
-      countEl.textContent = `${list.length.toLocaleString("en")} transcripts`;
+      countEl.textContent = `${list.length.toLocaleString("en")} transcripts · ${LANG_NAMES[state.lang] ?? state.lang}`;
 
       const visible = state.expanded ? list : list.slice(0, PREVIEW);
       rowsEl.replaceChildren(
@@ -136,7 +118,9 @@ const total = sessions.filter((s) => s.hasTranscript).length;
             b.className = "chip";
             b.textContent = `↓ .${kind}`;
             b.title = title;
-            b.addEventListener("click", (e) => download(s, kind, e.currentTarget));
+            b.addEventListener("click", (e) =>
+              downloadTranscript(s.id, s.trs[state.lang], kind, e.currentTarget)
+            );
             cells[i].append(b);
           });
           return tr;
