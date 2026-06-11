@@ -20,6 +20,8 @@ const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as
 const desc =
   description ??
   "Every WWDC session since 2014 — categories, durations, code snippets, transcripts and trends. Links to Apple, hosts nothing.";
+// Session pages pass Apple artwork; everything else shares the house banner.
+const og = ogImage ?? new URL("/og-banner.png", Astro.site).href;
 ---
 
 <!doctype html>
@@ -59,8 +61,13 @@ const desc =
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
-    {ogImage && <meta property="og:image" content={ogImage} />}
-    {ogImage && <meta name="twitter:card" content="summary_large_image" />}
+    <meta property="og:image" content={og} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script
+      defer
+      src="https://analytics.elkraneo.com/script.js"
+      data-website-id="9006f154-3ede-428f-8fff-9174f6c9c8d9"
+    ></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
