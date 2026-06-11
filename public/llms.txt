@@ -1,0 +1,25 @@
+# Dunfey Hotel — WWDC as data
+
+Every Apple WWDC session since 2014, indexed: categories, durations,
+on-screen code, transcripts (7 languages), cross-references, and the
+resources each session cites — including items Apple later delisted,
+preserved from dated snapshots. All content links to developer.apple.com;
+nothing is rehosted.
+
+## Machine-readable data
+
+- /data/sessions.json   — all sessions: id, title, year, topics, duration,
+                          snippet count, resource ids, transcript languages
+- /data/topics.json     — topic taxonomy with glyph URLs
+- /data/events.json     — WWDC editions with dates
+- /years/{year}/resources.tsv — per-edition resource catalog (TSV)
+
+## URL grammar
+
+- /sessions/{id}/                       e.g. /sessions/wwdc2026-303/
+- /years/{year}/  /topics/{slug}/
+- /observatory/?years=2020,2026&topics=spatial-computing&measure=hours
+  — every view is URL-addressable; selections are shareable and citable.
+
+Session ids are Apple's own (wwdc{year}-{number}). Data is rebuilt from
+Apple's public feed; the footer stamp carries the snapshot number and date.

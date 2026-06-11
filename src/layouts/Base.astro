@@ -22,6 +22,7 @@ const desc =
   "Every WWDC session since 2014 — categories, durations, code snippets, transcripts and trends. Links to Apple, hosts nothing.";
 // Session pages pass Apple artwork; everything else shares the house banner.
 const og = ogImage ?? new URL("/og-banner.png", Astro.site).href;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
 ---
 
 <!doctype html>
@@ -61,6 +62,8 @@ const og = ogImage ?? new URL("/og-banner.png", Astro.site).href;
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={desc} />
     <meta property="og:type" content="website" />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="application/rss+xml" title="Dunfey Hotel dispatches" href="/rss.xml" />
     <meta property="og:image" content={og} />
     <meta name="twitter:card" content="summary_large_image" />
     <script
