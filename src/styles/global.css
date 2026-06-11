@@ -564,8 +564,8 @@ h3.kicker {
 }
 
 .chip.topic[aria-pressed="true"] {
-  background: var(--chip-color);
-  border-color: var(--chip-color);
+  background: var(--chip-color, var(--ink));
+  border-color: var(--chip-color, var(--ink));
 }
 
 .chip.fob::before {
@@ -611,6 +611,59 @@ h3.kicker {
 /* Data pages escape the reading measure. */
 .shell.wide {
   max-width: min(96vw, 120rem);
+}
+
+.filter-input {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--rule-strong);
+  border-radius: 2px;
+  padding: 0.4rem 0.7rem;
+  min-inline-size: 16rem;
+}
+
+/* ————— the cross-section bar ————— */
+
+.registry-bar {
+  border-bottom: 1px solid var(--rule-strong);
+  padding-block: 0.55rem;
+}
+
+.registry-bar summary {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+  list-style: none;
+}
+
+.registry-bar summary::before {
+  content: "▸";
+  color: var(--brass);
+  font-size: 0.7rem;
+}
+
+.registry-bar[open] summary::before {
+  content: "▾";
+}
+
+.registry-bar summary .kicker {
+  margin: 0;
+}
+
+.rb-controls {
+  display: grid;
+  gap: 0.55rem;
+  padding-block: 0.7rem 0.4rem;
+}
+
+.rb-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
 }
 
 @media (prefers-reduced-motion: reduce) {

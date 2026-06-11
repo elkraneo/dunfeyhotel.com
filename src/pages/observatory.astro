@@ -24,20 +24,9 @@ import Base from "../layouts/Base.astro";
       <label><input type="radio" name="measure" value="hours" /> Hours</label>
       <label><input type="radio" name="measure" value="snippets" /> Code snippets</label>
     </fieldset>
-    <div class="lens">
-      <p class="kicker" id="years-label">Year</p>
-      <div class="chip-row" role="group" aria-labelledby="years-label" id="year-chips"></div>
-    </div>
-    <div class="lens">
-      <p class="kicker" id="topics-label">
-        Topics · <button type="button" class="linkish" id="topics-all">all</button> ·
-        <button type="button" class="linkish" id="topics-none">none</button>
-      </p>
-      <div class="chip-row" role="group" aria-labelledby="topics-label" id="topic-chips"></div>
-    </div>
   </div>
 
-  <div class="observatory-grid">
+  <div class="observatory-grid" data-dh-reactive>
     <figure class="panel" id="panel-years">
       <figcaption class="kicker" id="caption-years"></figcaption>
       <div class="view-toggle" role="group" aria-label="Show as">
@@ -158,36 +147,26 @@ import Base from "../layouts/Base.astro";
       cited: { label: "Most cited", fn: (a, b) => b.by.length - a.by.length },
     };
 
-    // ——— state, hydrated from the URL ———
+    // ——— state: years/topics/q live in the site-wide cross-section bar
+    // (window.dhFilter); this page owns only measure, kind and sort. ———
     const params = new URLSearchParams(location.search);
     const state = {
       measure: MEASURES[params.get("measure")] ? params.get("measure") : "sessions",
-      // Empty set = all years. `year` accepted for older links.
-      years: new Set(
-        (params.get("years") ?? params.get("year") ?? "")
-          .split(",")
-          .map(Number)
-          .filter((y) => years.includes(y))
-      ),
-      active: new Set(
-        params.get("topics")
-          ? params.get("topics").split(",").map((s) => topicBySlug.get(s)?.id).filter(Boolean)
-          : topics.map((t) => t.id)
-      ),
       kind: KINDS.some((k) => k.key === params.get("kind")) ? params.get("kind") : "sessions",
       sort: params.get("sort"),
       expanded: false,
     };
-    if (state.active.size === 0) state.active = new Set(topics.map((t) => t.id));
+    const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+    const activeSet = () => {
+      const f = F();
+      return f.topics.size ? f.topics : new Set(topics.map((t) => t.id));
+    };
 
     function syncURL() {
-      const p = new URLSearchParams();
-      if (state.measure !== "sessions") p.set("measure", state.measure);
-      if (state.years.size) p.set("years", [...state.years].sort().join(","));
-      if (state.active.size < topics.length)
-        p.set("topics", topics.filter((t) => state.active.has(t.id)).map((t) => slugOf(t.title)).join(","));
-      if (state.kind !== "sessions") p.set("kind", state.kind);
-      if (state.sort) p.set("sort", state.sort);
+      const p = new URLSearchParams(location.search);
+      state.measure !== "sessions" ? p.set("measure", state.measure) : p.delete("measure");
+      state.kind !== "sessions" ? p.set("kind", state.kind) : p.delete("kind");
+      state.sort ? p.set("sort", state.sort) : p.delete("sort");
       history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
     }
 
@@ -197,60 +176,16 @@ import Base from "../layouts/Base.astro";
     const yearLabel = (y) => `WWDC${String(y).slice(2)}`;
     const shortYear = (y) => `’${String(y).slice(2)}`;
     const minutes = (d) => (d ? `${Math.round(d / 60)} min` : "—");
-    const yearIn = (y) => state.years.size === 0 || state.years.has(y);
-    const yearScope = () =>
-      state.years.size ? [...state.years].sort().map(shortYear).join("+") : null;
+    const yearIn = (y) => {
+      const f = F();
+      return f.years.size === 0 || f.years.has(y);
+    };
+    const yearScope = () => {
+      const f = F();
+      return f.years.size ? [...f.years].sort().map(shortYear).join("+") : null;
+    };
 
     // ——— controls ———
-    const yearChips = document.getElementById("year-chips");
-    for (const y of [null, ...years]) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "chip fob";
-      b.textContent = y === null ? "All years" : shortYear(y);
-      b.addEventListener("click", () => {
-        if (y === null) state.years.clear();
-        else state.years.has(y) ? state.years.delete(y) : state.years.add(y);
-        state.expanded = false;
-        render();
-      });
-      b.dataset.year = y ?? "";
-      yearChips.append(b);
-    }
-
-    const topicChips = document.getElementById("topic-chips");
-    for (const t of topics) {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "chip topic";
-      b.style.setProperty("--chip-color", topicColor.get(t.id));
-      if (t.glyph) {
-        const img = document.createElement("img");
-        img.src = t.glyph;
-        img.alt = "";
-        img.width = 12;
-        img.height = 12;
-        img.loading = "lazy";
-        b.append(img);
-      }
-      b.append(` ${t.title}`);
-      b.addEventListener("click", () => {
-        state.active.has(t.id) ? state.active.delete(t.id) : state.active.add(t.id);
-        state.expanded = false;
-        render();
-      });
-      b.dataset.topic = t.id;
-      topicChips.append(b);
-    }
-    document.getElementById("topics-all").addEventListener("click", () => {
-      state.active = new Set(topics.map((t) => t.id));
-      render();
-    });
-    document.getElementById("topics-none").addEventListener("click", () => {
-      state.active.clear();
-      render();
-    });
-
     document.querySelectorAll('input[name="measure"]').forEach((input) => {
       input.checked = input.value === state.measure;
       input.addEventListener("change", () => {
@@ -345,8 +280,13 @@ import Base from "../layouts/Base.astro";
     const PREVIEW = 24;
 
     function matchingSessions() {
+      const active = activeSet();
+      const q = F().q.toLowerCase();
       return sessions.filter(
-        (s) => yearIn(s.y) && s.k.some((id) => state.active.has(id))
+        (s) =>
+          yearIn(s.y) &&
+          s.k.some((id) => active.has(id)) &&
+          (!q || s.t.toLowerCase().includes(q))
       );
     }
 
@@ -433,22 +373,12 @@ import Base from "../layouts/Base.astro";
     function render() {
       syncURL();
       const m = MEASURES[state.measure];
-      const cells = sessionCells.filter((c) => state.active.has(c.topicId));
+      const active = activeSet();
+      const cells = sessionCells.filter((c) => active.has(c.topicId));
       const widthOf = (id) => Math.max(280, document.getElementById(id).clientWidth - 8);
       const width = widthOf("panel-years");
       const tipYear = { format: { x: (y) => yearLabel(y) } };
 
-      yearChips.querySelectorAll(".chip").forEach((b) => {
-        const v = b.dataset.year === "" ? null : Number(b.dataset.year);
-        b.setAttribute(
-          "aria-pressed",
-          String(v === null ? state.years.size === 0 : state.years.has(v))
-        );
-      });
-      topicChips.querySelectorAll(".chip").forEach((b) => {
-        b.setAttribute("aria-pressed", String(state.active.has(Number(b.dataset.topic))));
-        b.style.setProperty("--chip-color", colorOf(Number(b.dataset.topic)));
-      });
 
       // A · measure per year
       const perYear = years.map((year) => ({
@@ -488,7 +418,7 @@ import Base from "../layouts/Base.astro";
       // B · distribution across topics
       const scope = cells.filter((c) => yearIn(c.year));
       const perTopic = topics
-        .filter((t) => state.active.has(t.id))
+        .filter((t) => active.has(t.id))
         .map((t) => ({
           topic: t.title,
           id: t.id,
@@ -537,7 +467,7 @@ import Base from "../layouts/Base.astro";
         "data-lines",
         ["Topic", ...years.map(shortYear)],
         topics
-          .filter((t) => state.active.has(t.id))
+          .filter((t) => active.has(t.id))
           .map((t) => [
             t.title,
             ...years.map((y) =>
@@ -559,8 +489,8 @@ import Base from "../layouts/Base.astro";
           x: { tickFormat: shortYear, label: null },
           y: { label: m.label, grid: true, nice: true },
           marks: [
-            state.years.size
-              ? Plot.ruleX([...state.years], { stroke: css("--ink"), strokeDasharray: "3,3" })
+            F().years.size
+              ? Plot.ruleX([...F().years], { stroke: css("--ink"), strokeDasharray: "3,3" })
               : null,
             Plot.line(lineData, {
               x: "year",
@@ -613,6 +543,10 @@ import Base from "../layouts/Base.astro";
       resizeTimer = setTimeout(render, 150);
     });
     addEventListener("dh-theme", render);
+    addEventListener("dh-filter", () => {
+      state.expanded = false;
+      render();
+    });
   </script>
 </Base>
 

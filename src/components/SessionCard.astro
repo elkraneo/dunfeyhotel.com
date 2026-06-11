@@ -10,7 +10,7 @@ const metaParts = [
 ].filter(Boolean);
 ---
 
-<li class="session-row">
+<li class="session-row" data-y={s.year} data-k={(s.topicIds ?? []).join(",")}>
   {s.thumb && (
     <img
       class="row-thumb"

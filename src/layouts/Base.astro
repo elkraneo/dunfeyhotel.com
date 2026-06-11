@@ -1,15 +1,15 @@
 ---
 import "../styles/global.css";
+import RegistryBar from "../components/RegistryBar.astro";
 import { aggregates, sessions, years } from "../lib/data.js";
 
 const { title, description, ogImage, wide = false, searchable = true } = Astro.props;
 
 const path = Astro.url.pathname;
-// Years and topics are indexed on the homepage registry; the nav carries the
-// instrument, the finder, and the two founding artifact collections.
+// Years and topics are indexed on the homepage registry; text search lives in
+// the cross-section bar. The nav carries the lenses.
 const nav = [
   { label: "Observatory", href: "/observatory/", section: "/observatory" },
-  { label: "Search", href: "/search/", section: "/search" },
   { label: "Transcripts", href: "/transcripts/", section: "/transcripts" },
   { label: "Resources", href: "/resources/", section: "/resources" },
   { label: "Dispatches", href: "/dispatches/", section: "/dispatches" },
@@ -69,6 +69,7 @@ const desc =
           </select>
         </nav>
       </header>
+      <RegistryBar open={wide} />
       <main id="main" data-pagefind-body={searchable ? "" : undefined}>
         <slot />
       </main>

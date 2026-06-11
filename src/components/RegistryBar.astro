@@ -1,0 +1,185 @@
+---
+// The site-wide cross-section: years + topics + text, persisted across
+// pages (URL params first, sessionStorage as fallback). Every section is a
+// lens on this one selection.
+import { topics, years } from "../lib/data.js";
+
+const { open = false } = Astro.props;
+const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph }));
+---
+
+<details class="registry-bar" open={open}>
+  <summary>
+    <span class="kicker">Cross-section</span>
+    <span class="meta" id="dh-summary">everything</span>
+  </summary>
+  <div class="rb-controls">
+    <div class="rb-row">
+      <label class="visually-hidden" for="dh-q">Filter by text</label>
+      <input id="dh-q" class="filter-input" type="search" placeholder="Filter by text…" />
+      <a class="chip" id="dh-search-link" href="/search/">full-text ↗</a>
+      <button type="button" class="linkish" id="dh-clear">clear</button>
+    </div>
+    <div class="chip-row" id="dh-years" role="group" aria-label="Years"></div>
+    <div class="chip-row" id="dh-topics" role="group" aria-label="Topics"></div>
+  </div>
+</details>
+
+<script is:inline define:vars={{ topicData, allYears: years }}>
+  (() => {
+    const params = new URLSearchParams(location.search);
+    let stored = {};
+    try {
+      stored = JSON.parse(sessionStorage.getItem("dh-filter") || "{}");
+    } catch {}
+
+    const fromParam = (key, valid) =>
+      params.has(key)
+        ? params.get(key).split(",").map(valid).filter((v) => v !== null)
+        : null;
+
+    const topicBySlug = new Map(
+      topicData.map((t) => [
+        t.title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+        t,
+      ])
+    );
+    const slugOf = (id) =>
+      [...topicBySlug.entries()].find(([, t]) => t.id === id)?.[0];
+
+    window.dhFilter = {
+      years: new Set(
+        fromParam("years", (v) => (allYears.includes(Number(v)) ? Number(v) : null)) ??
+          (stored.years ?? []).filter((y) => allYears.includes(y))
+      ),
+      topics: new Set(
+        fromParam("topics", (v) => topicBySlug.get(v)?.id ?? null) ??
+          (stored.topics ?? []).filter((id) => topicData.some((t) => t.id === id))
+      ),
+      q: params.get("q") ?? stored.q ?? "",
+    };
+
+    const F = window.dhFilter;
+    const summaryEl = document.getElementById("dh-summary");
+    const qEl = document.getElementById("dh-q");
+    const searchLink = document.getElementById("dh-search-link");
+    const yearsEl = document.getElementById("dh-years");
+    const topicsEl = document.getElementById("dh-topics");
+
+    function sync() {
+      const p = new URLSearchParams(location.search);
+      F.years.size ? p.set("years", [...F.years].sort().join(",")) : p.delete("years");
+      F.topics.size
+        ? p.set("topics", [...F.topics].map(slugOf).filter(Boolean).join(","))
+        : p.delete("topics");
+      F.q ? p.set("q", F.q) : p.delete("q");
+      p.delete("year");
+      history.replaceState(null, "", p.size ? `?${p}` : location.pathname);
+      try {
+        sessionStorage.setItem(
+          "dh-filter",
+          JSON.stringify({ years: [...F.years], topics: [...F.topics], q: F.q })
+        );
+      } catch {}
+
+      const parts = [];
+      if (F.years.size) parts.push([...F.years].sort().map((y) => `’${String(y).slice(2)}`).join("+"));
+      if (F.topics.size)
+        parts.push(
+          [...F.topics]
+            .map((id) => topicData.find((t) => t.id === id)?.title)
+            .filter(Boolean)
+            .join(", ")
+        );
+      if (F.q) parts.push(`“${F.q}”`);
+      summaryEl.textContent = parts.length ? parts.join(" · ") : "everything";
+      searchLink.href = F.q ? `/search/?q=${encodeURIComponent(F.q)}` : "/search/";
+
+      yearsEl.querySelectorAll(".chip").forEach((b) => {
+        const v = b.dataset.year === "" ? null : Number(b.dataset.year);
+        b.setAttribute("aria-pressed", String(v === null ? F.years.size === 0 : F.years.has(v)));
+      });
+      topicsEl.querySelectorAll(".chip").forEach((b) =>
+        b.setAttribute("aria-pressed", String(F.topics.has(Number(b.dataset.topic))))
+      );
+
+      applyStaticRows();
+      dispatchEvent(new CustomEvent("dh-filter"));
+    }
+
+    // Static pages (years/topics/related lists) get filtered in place.
+    function applyStaticRows() {
+      document.querySelectorAll(".session-rows .session-row[data-y]").forEach((row) => {
+        const y = Number(row.dataset.y);
+        const k = (row.dataset.k || "").split(",").map(Number);
+        const title = row.querySelector("h3")?.textContent.toLowerCase() ?? "";
+        const hide =
+          (F.years.size && !F.years.has(y)) ||
+          (F.topics.size && !k.some((id) => F.topics.has(id))) ||
+          (F.q && !title.includes(F.q.toLowerCase()));
+        row.hidden = Boolean(hide);
+      });
+    }
+
+    for (const y of [null, ...allYears]) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip fob";
+      b.textContent = y === null ? "All years" : `’${String(y).slice(2)}`;
+      b.dataset.year = y ?? "";
+      b.addEventListener("click", () => {
+        if (y === null) F.years.clear();
+        else F.years.has(y) ? F.years.delete(y) : F.years.add(y);
+        sync();
+      });
+      yearsEl.append(b);
+    }
+
+    for (const t of topicData) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip topic";
+      if (t.glyph) {
+        const img = document.createElement("img");
+        img.src = t.glyph;
+        img.alt = "";
+        img.width = 12;
+        img.height = 12;
+        img.loading = "lazy";
+        b.append(img);
+      }
+      b.append(` ${t.title}`);
+      b.dataset.topic = t.id;
+      b.addEventListener("click", () => {
+        F.topics.has(t.id) ? F.topics.delete(t.id) : F.topics.add(t.id);
+        sync();
+      });
+      topicsEl.append(b);
+    }
+
+    qEl.value = F.q;
+    let timer;
+    qEl.addEventListener("input", () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        F.q = qEl.value.trim();
+        sync();
+      }, 160);
+    });
+    qEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !document.querySelector("[data-dh-reactive]")) {
+        location.href = `/search/?q=${encodeURIComponent(qEl.value.trim())}`;
+      }
+    });
+    document.getElementById("dh-clear").addEventListener("click", () => {
+      F.years.clear();
+      F.topics.clear();
+      F.q = "";
+      qEl.value = "";
+      sync();
+    });
+
+    sync();
+    addEventListener("DOMContentLoaded", applyStaticRows);
+  })();
+</script>
