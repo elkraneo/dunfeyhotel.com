@@ -1,7 +1,8 @@
 ---
 // The site-wide cross-section: years + topics + text, persisted across
 // pages (URL params first, sessionStorage as fallback). Every section is a
-// lens on this one selection.
+// lens on this one selection. Years render as room-key fobs, topics as
+// colored plaques — two different objects from the same hotel.
 import { topics, years } from "../lib/data.js";
 
 const { open = false } = Astro.props;
@@ -15,18 +16,52 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
   </summary>
   <div class="rb-controls">
     <div class="rb-row">
-      <label class="visually-hidden" for="dh-q">Filter by text</label>
-      <input id="dh-q" class="filter-input" type="search" placeholder="Filter by text…" />
-      <a class="chip" id="dh-search-link" href="/search/">full-text ↗</a>
+      <label class="visually-hidden" for="dh-q">Search</label>
+      <input id="dh-q" class="filter-input" type="search" placeholder="Search…" />
+      <span class="meta" id="dh-hint" hidden>⏎ full-text results</span>
       <button type="button" class="linkish" id="dh-clear">clear</button>
     </div>
-    <div class="chip-row" id="dh-years" role="group" aria-label="Years"></div>
-    <div class="chip-row" id="dh-topics" role="group" aria-label="Topics"></div>
+    <div class="rb-group">
+      <span class="rb-label" id="dh-years-label">Years</span>
+      <div class="chip-row" role="group" aria-labelledby="dh-years-label" id="dh-years"></div>
+    </div>
+    <div class="rb-group">
+      <span class="rb-label" id="dh-topics-label">Topics</span>
+      <div class="chip-row" role="group" aria-labelledby="dh-topics-label" id="dh-topics"></div>
+    </div>
   </div>
 </details>
 
 <script is:inline define:vars={{ topicData, allYears: years }}>
   (() => {
+    // Same theme palettes as the observatory charts: category colors are
+    // one vocabulary across the whole site.
+    const PALETTES = {
+      ledger: [
+        "#8c1d22", "#9a6b1f", "#2f6f3e", "#1f4e79", "#b3541e",
+        "#6d3e8e", "#0f766e", "#c43e4b", "#5a6e1f", "#2e7fb8",
+        "#a34708", "#4a44a8", "#1f8a55", "#a23a78", "#8a7a14",
+        "#176d8c", "#9c5230", "#6a7a2a", "#5d3a9b",
+      ],
+      night: [
+        "#e2858d", "#d9b35e", "#8fbf94", "#85a8d4", "#e0a268",
+        "#c49ad4", "#6fc7be", "#ef8f98", "#b9cb8c", "#94bee0",
+        "#e99d62", "#aba5df", "#7fd0a7", "#d88fb6", "#cfbe65",
+        "#8ac4dc", "#e19a7a", "#b8c37a", "#b49be0",
+      ],
+      cupertino: [
+        "#d70015", "#c93400", "#937400", "#248a3d", "#0c817b",
+        "#008299", "#0071a4", "#0040dd", "#3634a3", "#8944ab",
+        "#d30f45", "#7f6545", "#365314", "#155e75", "#9d174d",
+        "#4d7c0f", "#5b21b6", "#b25000", "#0f766e",
+      ],
+    };
+    const colorOf = (i) => {
+      const theme = document.documentElement.dataset.theme;
+      const p = PALETTES[theme] ?? PALETTES.ledger;
+      return p[i % p.length];
+    };
+
     const params = new URLSearchParams(location.search);
     let stored = {};
     try {
@@ -38,14 +73,10 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
         ? params.get(key).split(",").map(valid).filter((v) => v !== null)
         : null;
 
-    const topicBySlug = new Map(
-      topicData.map((t) => [
-        t.title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-        t,
-      ])
-    );
-    const slugOf = (id) =>
-      [...topicBySlug.entries()].find(([, t]) => t.id === id)?.[0];
+    const slug = (title) =>
+      title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const topicBySlug = new Map(topicData.map((t) => [slug(t.title), t]));
+    const slugOfId = new Map(topicData.map((t) => [t.id, slug(t.title)]));
 
     window.dhFilter = {
       years: new Set(
@@ -60,9 +91,10 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
     };
 
     const F = window.dhFilter;
+    const onSearchPage = location.pathname.startsWith("/search");
     const summaryEl = document.getElementById("dh-summary");
     const qEl = document.getElementById("dh-q");
-    const searchLink = document.getElementById("dh-search-link");
+    const hintEl = document.getElementById("dh-hint");
     const yearsEl = document.getElementById("dh-years");
     const topicsEl = document.getElementById("dh-topics");
 
@@ -70,7 +102,7 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
       const p = new URLSearchParams(location.search);
       F.years.size ? p.set("years", [...F.years].sort().join(",")) : p.delete("years");
       F.topics.size
-        ? p.set("topics", [...F.topics].map(slugOf).filter(Boolean).join(","))
+        ? p.set("topics", [...F.topics].map((id) => slugOfId.get(id)).filter(Boolean).join(","))
         : p.delete("topics");
       F.q ? p.set("q", F.q) : p.delete("q");
       p.delete("year");
@@ -93,7 +125,7 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
         );
       if (F.q) parts.push(`“${F.q}”`);
       summaryEl.textContent = parts.length ? parts.join(" · ") : "everything";
-      searchLink.href = F.q ? `/search/?q=${encodeURIComponent(F.q)}` : "/search/";
+      hintEl.hidden = onSearchPage || !F.q;
 
       yearsEl.querySelectorAll(".chip").forEach((b) => {
         const v = b.dataset.year === "" ? null : Number(b.dataset.year);
@@ -135,10 +167,17 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
       yearsEl.append(b);
     }
 
-    for (const t of topicData) {
+    function recolorTopics() {
+      topicsEl.querySelectorAll(".chip").forEach((b, i) =>
+        b.style.setProperty("--chip-color", colorOf(i))
+      );
+    }
+
+    topicData.forEach((t, i) => {
       const b = document.createElement("button");
       b.type = "button";
       b.className = "chip topic";
+      b.style.setProperty("--chip-color", colorOf(i));
       if (t.glyph) {
         const img = document.createElement("img");
         img.src = t.glyph;
@@ -155,7 +194,8 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
         sync();
       });
       topicsEl.append(b);
-    }
+    });
+    addEventListener("dh-theme", recolorTopics);
 
     qEl.value = F.q;
     let timer;
@@ -167,9 +207,9 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
       }, 160);
     });
     qEl.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" && !document.querySelector("[data-dh-reactive]")) {
-        location.href = `/search/?q=${encodeURIComponent(qEl.value.trim())}`;
-      }
+      if (e.key !== "Enter") return;
+      const q = qEl.value.trim();
+      if (!onSearchPage && q) location.href = `/search/?q=${encodeURIComponent(q)}`;
     });
     document.getElementById("dh-clear").addEventListener("click", () => {
       F.years.clear();

@@ -11,11 +11,12 @@ import Base from "../layouts/Base.astro";
     <p class="kicker">The concierge</p>
     <h1>Ask for anything in the registry.</h1>
     <p class="lede">
-      Titles, descriptions, on-screen code, document catalogs, dispatches.
+      Type in the cross-section bar above — full text of titles, descriptions,
+      on-screen code, catalogs and dispatches.
     </p>
   </section>
 
-  <div id="search"></div>
+  <div id="search" data-dh-reactive></div>
 
   <link rel="stylesheet" href="/pagefind/pagefind-ui.css" />
   <script is:inline src="/pagefind/pagefind-ui.js"></script>
@@ -28,10 +29,12 @@ import Base from "../layouts/Base.astro";
           showImages: false,
           pageSize: 10,
         });
-        const q = new URLSearchParams(location.search).get("q");
-        if (q) ui.triggerSearch(q);
-        const input = document.querySelector("#search input");
-        if (input) input.focus();
+        // The cross-section bar is the only input: it drives Pagefind live.
+        const run = () => ui.triggerSearch(window.dhFilter?.q ?? "");
+        run();
+        addEventListener("dh-filter", run);
+        const barInput = document.getElementById("dh-q");
+        if (barInput) barInput.focus();
       } else {
         document.getElementById("search").innerHTML =
           "<p>Search index not built yet — run <code>npm run build</code> (Pagefind indexes the built site).</p>";
@@ -78,8 +81,9 @@ import Base from "../layouts/Base.astro";
     color: var(--oxblood);
   }
 
-  #search .pagefind-ui__search-input:focus-visible {
-    outline: 2px solid var(--oxblood);
-    outline-offset: 2px;
+  /* The bar is the input; Pagefind's own form stays hidden. */
+  #search .pagefind-ui__form > .pagefind-ui__search-input,
+  #search .pagefind-ui__search-clear {
+    display: none;
   }
 </style>
