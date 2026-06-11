@@ -1105,3 +1105,18 @@ ul.plain li {
   filter: var(--thumb-filter);
   display: block;
 }
+
+/* Chart tooltips follow the theme — Plot defaults to a white bubble. */
+.plot {
+  --plot-background: var(--paper);
+}
+
+.plot [aria-label="tip"] path {
+  fill: var(--paper);
+  stroke: var(--rule-strong);
+}
+
+.plot [aria-label="tip"] text,
+.plot [aria-label="tip"] tspan {
+  fill: var(--ink);
+}
