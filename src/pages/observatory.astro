@@ -109,10 +109,18 @@ import Base from "../layouts/Base.astro";
     const topicBySlug = new Map(topics.map((t) => [slugOf(t.title), t]));
 
     const MEASURES = {
-      sessions: { label: "sessions", of: (c) => c.sessions },
-      hours: { label: "hours", of: (c) => c.seconds / 3600 },
-      snippets: { label: "code snippets", of: (c) => c.snippets },
+      sessions: { label: "sessions", of: (c) => c.sessions, int: true },
+      hours: { label: "hours", of: (c) => c.seconds / 3600, int: false },
+      snippets: { label: "code snippets", of: (c) => c.snippets, int: true },
     };
+
+    // Counts can't be fractional: keep the value axis on whole numbers.
+    // Small ranges get a tick per integer; larger ones keep Plot's nice
+    // steps but never a decimal label.
+    const valScale = (measure, maxVal) =>
+      !measure.int
+        ? {}
+        : { tickFormat: "d", ...(maxVal <= 8 ? { interval: 1 } : {}) };
     const KINDS = [
       { key: "sessions", label: "Sessions" },
       { key: "samplecode", label: "Sample code" },
@@ -395,7 +403,12 @@ import Base from "../layouts/Base.astro";
           marginLeft: 46,
           style: { fontSize: "12.5px" },
           x: { tickFormat: shortYear, label: null, type: "band" },
-          y: { label: m.label, grid: true, nice: true },
+          y: {
+            label: m.label,
+            grid: true,
+            nice: true,
+            ...valScale(m, Math.max(0, ...perYear.map((d) => d.value))),
+          },
           marks: [
             Plot.barY(perYear, {
               x: "year",
@@ -438,7 +451,12 @@ import Base from "../layouts/Base.astro";
           height: perTopic.length * 26 + 54,
           marginLeft: 200,
           style: { fontSize: "12.5px" },
-          x: { label: m.label, grid: true, nice: true },
+          x: {
+            label: m.label,
+            grid: true,
+            nice: true,
+            ...valScale(m, Math.max(0, ...perTopic.map((d) => d.value))),
+          },
           y: { label: null },
           marks: [
             Plot.barX(perTopic, {
@@ -498,7 +516,12 @@ import Base from "../layouts/Base.astro";
             ticks: spanYears,
             domain: single ? [yMin - 0.5, yMax + 0.5] : [yMin, yMax],
           },
-          y: { label: m.label, grid: true, nice: true },
+          y: {
+            label: m.label,
+            grid: true,
+            nice: true,
+            ...valScale(m, Math.max(0, ...lineData.map((d) => d.value))),
+          },
           marks: [
             F().years.size
               ? Plot.ruleX([...F().years], { stroke: css("--ink"), strokeDasharray: "3,3" })
