@@ -11,14 +11,19 @@ import {
   timeLink,
   topicSlug,
 } from "../../lib/data.js";
+import type { Session, Resource } from "../../lib/types";
 
 export function getStaticPaths() {
   return sessions.map((s) => ({ params: { id: s.id }, props: { session: s } }));
 }
 
 const { session: s } = Astro.props;
-const related = s.related.map((id) => sessionById.get(id)).filter(Boolean);
-const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
+const related = s.related
+  .map((id) => sessionById.get(id))
+  .filter((x): x is Session => Boolean(x));
+const res = s.resourceIds
+  .map((id) => resourceById.get(id))
+  .filter((x): x is Resource => Boolean(x));
 ---
 
 <Base title={s.title} description={s.description ?? undefined} ogImage={s.ogImage}>
@@ -160,22 +165,25 @@ const res = s.resourceIds.map((id) => resourceById.get(id)).filter(Boolean);
   const el = document.getElementById("transcript-actions");
   if (el) {
     const sid = el.dataset.sid;
-    const trs = JSON.parse(el.dataset.trs);
+    const trs: Record<string, string> = JSON.parse(el.dataset.trs ?? "{}");
     const langs = Object.keys(trs);
     langs.sort((a, b) => (a === "eng" ? -1 : b === "eng" ? 1 : a.localeCompare(b)));
-    const sel = el.querySelector("[data-lang]");
-    sel.replaceChildren(
-      ...langs.map((l) => {
-        const o = document.createElement("option");
-        o.value = l;
-        o.textContent = LANG_NAMES[l] ?? l;
-        return o;
-      })
-    );
-    el.querySelectorAll("[data-dl]").forEach((b) =>
-      b.addEventListener("click", (e) =>
-        downloadTranscript(sid, trs[sel.value], e.currentTarget.dataset.dl, e.currentTarget)
-      )
-    );
+    const sel = el.querySelector<HTMLSelectElement>("[data-lang]");
+    if (sel) {
+      sel.replaceChildren(
+        ...langs.map((l) => {
+          const o = document.createElement("option");
+          o.value = l;
+          o.textContent = (LANG_NAMES as Record<string, string>)[l] ?? l;
+          return o;
+        })
+      );
+      el.querySelectorAll("[data-dl]").forEach((b) =>
+        b.addEventListener("click", (e) => {
+          const btn = e.currentTarget as HTMLElement;
+          downloadTranscript(sid, trs[sel.value], btn.dataset.dl, btn);
+        })
+      );
+    }
   }
 </script>

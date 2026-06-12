@@ -14,6 +14,16 @@
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  EventsSchema,
+  TopicsSchema,
+  SessionsSchema,
+  ResourcesSchema,
+  AggregatesSchema,
+  ExplorerSchema,
+  ObservatoryIndexSchema,
+  LostAndFoundSchema,
+} from "../src/lib/schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const rawRoot = join(here, "..", "data", "raw");
@@ -203,7 +213,10 @@ for (const dir of olderSnapshots) {
     knownResourceIds.add(r.id);
     const refs = oldRefs.get(r.id) ?? [];
     const refSession = refs.map((id) => oldSession.get(id)).find(Boolean);
-    const year = refSession ? Number(refSession.eventId.slice(4)) : null;
+    // A non-wwdcYYYY eventId yields NaN, which JSON serializes to null; pin it
+    // to null up front so the in-memory record matches what gets written.
+    const refYear = refSession ? Number(refSession.eventId.slice(4)) : NaN;
+    const year = Number.isFinite(refYear) ? refYear : null;
     const { recoverable, status } = recoverabilityOf(r.url);
     resources.push({
       id: r.id,
@@ -334,11 +347,15 @@ const explorer = {
 };
 
 await mkdir(outDir, { recursive: true });
-const write = (name, data) => writeFile(join(outDir, name), JSON.stringify(data, null, 1));
-await write("events.json", events);
-await write("topics.json", topics);
-await write("sessions.json", sessions);
-await write("resources.json", resources);
+// Validate every output against its Zod schema immediately before writing so
+// malformed data fails the build with a clear, located error instead of
+// shipping a broken dataset.
+const write = (name, schema, data) =>
+  writeFile(join(outDir, name), JSON.stringify(schema.parse(data), null, 1));
+await write("events.json", EventsSchema, events);
+await write("topics.json", TopicsSchema, topics);
+await write("sessions.json", SessionsSchema, sessions);
+await write("resources.json", ResourcesSchema, resources);
 // Compact per-item index for the observatory's actionable cross-section:
 // every session and resource, minimal fields, short keys.
 const observatoryIndex = {
@@ -383,10 +400,10 @@ const lostAndFound = {
   items: lostFound,
 };
 
-await write("aggregates.json", aggregates);
-await write("explorer.json", explorer);
-await write("observatory-index.json", observatoryIndex);
-await write("lost-and-found.json", lostAndFound);
+await write("aggregates.json", AggregatesSchema, aggregates);
+await write("explorer.json", ExplorerSchema, explorer);
+await write("observatory-index.json", ObservatoryIndexSchema, observatoryIndex);
+await write("lost-and-found.json", LostAndFoundSchema, lostAndFound);
 console.log(
   `  lost & found: ${lostAndFound.counts.total} delisted (${lostAndFound.counts.recoverable} recoverable, ${lostAndFound.counts.tombstone} tombstone)`
 );

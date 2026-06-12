@@ -44,24 +44,51 @@ const total = resources.length;
   <p><button type="button" class="watch secondary" id="r-more" hidden>Show everything</button></p>
 
   <script>
-    import allResources from "../../data/normalized/resources.json";
-    import index from "../../data/normalized/observatory-index.json";
+    import allResourcesJson from "../../data/normalized/resources.json";
+    import indexJson from "../../data/normalized/observatory-index.json";
     import { RESOURCE_ICONS, TYPE_LABELS } from "../lib/resource-icons.js";
-    const sessionMeta = new Map(index.sessions.map((s) => [s.id, s]));
+    import type {
+      Resource,
+      ObservatoryIndex,
+      ObservatorySession,
+    } from "../lib/types";
+
+    const allResources = allResourcesJson as Resource[];
+    const index = indexJson as ObservatoryIndex;
+    const icons = RESOURCE_ICONS as Record<string, string>;
+    const labels = TYPE_LABELS as Record<string, string>;
+
+    type DhFilter = { years: Set<number>; topics: Set<number>; q: string };
+
+    const sessionMeta = new Map<string, ObservatorySession>(
+      index.sessions.map((s: ObservatorySession) => [s.id, s])
+    );
 
     const all = allResources
-      .filter((r) => r.type && r.title && r.url)
-      .sort((a, b) => a.title.localeCompare(b.title));
-    const types = [...new Set(all.map((r) => r.type))].sort();
+      .filter((r: Resource) => r.type && r.title && r.url)
+      .sort((a: Resource, b: Resource) =>
+        (a.title ?? "").localeCompare(b.title ?? "")
+      );
+    const types = [
+      ...new Set(all.map((r: Resource) => r.type)),
+    ].sort() as string[];
 
-    const state = { type: null, expanded: false };
+    const state: { type: string | null; expanded: boolean } = {
+      type: null,
+      expanded: false,
+    };
     const PREVIEW = 60;
-    const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+    const F = (): DhFilter =>
+      (window as Window & { dhFilter?: DhFilter }).dhFilter ?? {
+        years: new Set<number>(),
+        topics: new Set<number>(),
+        q: "",
+      };
 
-    const rowsEl = document.getElementById("r-rows");
-    const countEl = document.getElementById("r-count");
-    const moreEl = document.getElementById("r-more");
-    const typeChips = document.getElementById("r-type-chips");
+    const rowsEl = document.getElementById("r-rows")!;
+    const countEl = document.getElementById("r-count")!;
+    const moreEl = document.getElementById("r-more")!;
+    const typeChips = document.getElementById("r-type-chips")!;
 
     for (const t of [null, ...types]) {
       const b = document.createElement("button");
@@ -69,14 +96,14 @@ const total = resources.length;
       b.className = "chip";
       if (t === null) b.textContent = "All";
       else {
-        b.innerHTML = RESOURCE_ICONS[t] ?? "";
-        b.append(` ${TYPE_LABELS[t] ?? t}`);
+        b.innerHTML = icons[t] ?? "";
+        b.append(` ${labels[t] ?? t}`);
       }
       b.dataset.value = t ?? "";
       typeChips.append(b);
     }
-    typeChips.addEventListener("change", (e) => {
-      state.type = e.detail.value || null;
+    typeChips.addEventListener("change", (e: Event) => {
+      state.type = (e as CustomEvent<{ value: string }>).detail.value || null;
       state.expanded = false;
       render();
     });
@@ -87,43 +114,44 @@ const total = resources.length;
     });
 
     // A resource matches years/topics through the sessions that cite it.
-    function matchesFilter(r, f) {
+    function matchesFilter(r: Resource, f: DhFilter) {
       if (!f.years.size && !f.topics.size) return true;
-      return r.sessionIds.some((id) => {
+      return r.sessionIds.some((id: string) => {
         const s = sessionMeta.get(id);
         if (!s) return false;
         return (
           (f.years.size === 0 || f.years.has(s.y)) &&
-          (f.topics.size === 0 || s.k.some((tid) => f.topics.has(tid)))
+          (f.topics.size === 0 || s.k.some((tid: number) => f.topics.has(tid)))
         );
       });
     }
 
     function render() {
-      typeChips.value = state.type ?? "";
+      (typeChips as HTMLElement & { value: string }).value = state.type ?? "";
 
       const f = F();
       const q = f.q.toLowerCase();
       const list = all.filter(
-        (r) =>
+        (r: Resource) =>
           (state.type === null || r.type === state.type) &&
           matchesFilter(r, f) &&
           (!q ||
-            r.title.toLowerCase().includes(q) ||
+            (r.title ?? "").toLowerCase().includes(q) ||
             (r.description ?? "").toLowerCase().includes(q))
       );
       countEl.textContent = `${list.length.toLocaleString("en")} resources`;
 
       const visible = state.expanded ? list : list.slice(0, PREVIEW);
       rowsEl.replaceChildren(
-        ...visible.map((r) => {
+        ...visible.map((r: Resource) => {
           const tr = document.createElement("tr");
           const typeCell = document.createElement("td");
           typeCell.className = "mono-id res-type";
-          typeCell.innerHTML = `<span class="res-icon" title="${TYPE_LABELS[r.type] ?? r.type}">${RESOURCE_ICONS[r.type] ?? ""}</span> ${TYPE_LABELS[r.type] ?? r.type}`;
+          const rType = r.type ?? "";
+          typeCell.innerHTML = `<span class="res-icon" title="${labels[rType] ?? rType}">${icons[rType] ?? ""}</span> ${labels[rType] ?? rType}`;
           const resCell = document.createElement("td");
           const link = document.createElement("a");
-          link.href = r.url;
+          link.href = r.url ?? "";
           link.rel = "external";
           link.textContent = r.title;
           resCell.append(link);
@@ -142,7 +170,7 @@ const total = resources.length;
           }
           const inCell = document.createElement("td");
           inCell.className = "mono-id";
-          r.sessionIds.slice(0, 3).forEach((id, i) => {
+          r.sessionIds.slice(0, 3).forEach((id: string, i: number) => {
             if (i) inCell.append(", ");
             const a = document.createElement("a");
             a.href = `/sessions/${id}/`;

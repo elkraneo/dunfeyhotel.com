@@ -2,7 +2,10 @@
 // Live resource list for dispatches: resources referenced by sessions of a
 // given year and/or topic, with descriptions and back-links.
 import { sessions, resourceById, topicBySlug } from "../lib/data.js";
+import type { Resource, Session } from "../lib/types";
 import ResourceIcon from "./ResourceIcon.astro";
+
+type Entry = { resource: Resource; referencedBy: Session[] };
 
 const { year, topic, types } = Astro.props;
 const t = topic ? topicBySlug.get(topic) : null;
@@ -13,7 +16,7 @@ const scope = sessions.filter(
     (!t || s.topicIds.includes(t.id))
 );
 
-const seen = new Map();
+const seen = new Map<number, Entry>();
 for (const s of scope) {
   for (const rid of s.resourceIds) {
     const r = resourceById.get(rid);

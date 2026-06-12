@@ -5,8 +5,9 @@
   "private": true,
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build && node scripts/build-search.mjs",
+    "build": "astro check && astro build && node scripts/build-search.mjs",
     "preview": "astro preview",
+    "check": "astro check",
     "etl:fetch": "node etl/fetch.mjs",
     "etl:normalize": "node etl/normalize.mjs"
   },
@@ -15,9 +16,12 @@
     "@astrojs/rss": "^4.0.18",
     "@astrojs/sitemap": "^3.7.3",
     "@observablehq/plot": "^0.6.17",
-    "astro": "^5.0.0"
+    "astro": "^5.0.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "pagefind": "^1.5.2"
+    "@astrojs/check": "^0.9.4",
+    "pagefind": "^1.5.2",
+    "typescript": "^5.6.0"
   }
 }

@@ -46,23 +46,40 @@ const total = sessions.filter((s) => s.hasTranscript).length;
   <p><button type="button" class="watch secondary" id="t-more" hidden>Show everything</button></p>
 
   <script>
-    import index from "../../data/normalized/observatory-index.json";
-    import explorer from "../../data/normalized/explorer.json";
+    import indexJson from "../../data/normalized/observatory-index.json";
+    import explorerJson from "../../data/normalized/explorer.json";
     import { LANG_NAMES, downloadTranscript } from "../lib/transcript-client.js";
+    import type {
+      ObservatoryIndex,
+      ObservatorySession,
+      Explorer,
+      Topic,
+    } from "../lib/types";
 
-    const topicMeta = new Map(explorer.topics.map((t) => [t.id, t]));
+    const index = indexJson as unknown as ObservatoryIndex;
+    const explorer = explorerJson as unknown as Explorer;
+    const langNames = LANG_NAMES as Record<string, string>;
+    const dhFilter = (): { years: Set<number>; topics: Set<number>; q: string } | undefined =>
+      (window as unknown as {
+        dhFilter?: { years: Set<number>; topics: Set<number>; q: string };
+      }).dhFilter;
+
+    const topicMeta = new Map<number, Topic>(
+      explorer.topics.map((t: Topic) => [t.id, t])
+    );
     const all = index.sessions
-      .filter((s) => s.tr && Object.keys(s.trs ?? {}).length)
-      .sort((a, b) => b.y - a.y || a.t.localeCompare(b.t));
+      .filter((s: ObservatorySession) => s.tr && Object.keys(s.trs ?? {}).length)
+      .sort((a: ObservatorySession, b: ObservatorySession) => b.y - a.y || a.t.localeCompare(b.t));
 
-    const langs = [...new Set(all.flatMap((s) => Object.keys(s.trs)))];
+    const langs = [...new Set(all.flatMap((s: ObservatorySession) => Object.keys(s.trs)))];
     langs.sort((a, b) => (a === "eng" ? -1 : b === "eng" ? 1 : a.localeCompare(b)));
-    const langSel = document.getElementById("t-lang");
+    const langSel = document.getElementById("t-lang") as HTMLSelectElement | null;
+    if (!langSel) throw new Error("missing #t-lang");
     langSel.replaceChildren(
       ...langs.map((l) => {
         const o = document.createElement("option");
         o.value = l;
-        o.textContent = LANG_NAMES[l] ?? l;
+        o.textContent = langNames[l] ?? l;
         return o;
       })
     );
@@ -74,11 +91,15 @@ const total = sessions.filter((s) => s.hasTranscript).length;
 
     const state = { lang: "eng", expanded: false };
     const PREVIEW = 50;
-    const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+    const F = () => dhFilter() ?? { years: new Set<number>(), topics: new Set<number>(), q: "" };
 
-    const rowsEl = document.getElementById("t-rows");
-    const countEl = document.getElementById("t-count");
-    const moreEl = document.getElementById("t-more");
+    const rowsMaybe = document.getElementById("t-rows");
+    const countMaybe = document.getElementById("t-count");
+    const moreMaybe = document.getElementById("t-more");
+    if (!rowsMaybe || !countMaybe || !moreMaybe) throw new Error("missing transcript elements");
+    const rowsEl: HTMLElement = rowsMaybe;
+    const countEl: HTMLElement = countMaybe;
+    const moreEl: HTMLElement = moreMaybe;
 
     moreEl.addEventListener("click", () => {
       state.expanded = true;
@@ -89,17 +110,17 @@ const total = sessions.filter((s) => s.hasTranscript).length;
       const f = F();
       const q = f.q.toLowerCase();
       const list = all.filter(
-        (s) =>
+        (s: ObservatorySession) =>
           s.trs[state.lang] &&
           (f.years.size === 0 || f.years.has(s.y)) &&
-          (f.topics.size === 0 || s.k.some((id) => f.topics.has(id))) &&
+          (f.topics.size === 0 || s.k.some((id: number) => f.topics.has(id))) &&
           (!q || s.t.toLowerCase().includes(q) || s.id.includes(q))
       );
-      countEl.textContent = `${list.length.toLocaleString("en")} transcripts · ${LANG_NAMES[state.lang] ?? state.lang}`;
+      countEl.textContent = `${list.length.toLocaleString("en")} transcripts · ${langNames[state.lang] ?? state.lang}`;
 
       const visible = state.expanded ? list : list.slice(0, PREVIEW);
       rowsEl.replaceChildren(
-        ...visible.map((s) => {
+        ...visible.map((s: ObservatorySession) => {
           const tr = document.createElement("tr");
           const topic = topicMeta.get(s.p ?? s.k[0]);
           tr.innerHTML = `
@@ -110,9 +131,10 @@ const total = sessions.filter((s) => s.hasTranscript).length;
             <td class="num">${Math.round(s.d / 60)}</td>
             <td class="dl"></td>
             <td class="dl"></td>`;
-          tr.querySelector("a").textContent = s.t;
+          const link = tr.querySelector("a");
+          if (link) link.textContent = s.t;
           const cells = tr.querySelectorAll(".dl");
-          [["srt", "Download subtitles"], ["txt", "Download plain text"]].forEach(([kind, title], i) => {
+          ([["srt", "Download subtitles"], ["txt", "Download plain text"]] as const).forEach(([kind, title], i) => {
             const b = document.createElement("button");
             b.type = "button";
             b.className = "chip";

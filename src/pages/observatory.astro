@@ -107,31 +107,44 @@ const spanYears = years.length;
 
   <script>
     import * as Plot from "@observablehq/plot";
-    import explorer from "../../data/normalized/explorer.json";
-    import index from "../../data/normalized/observatory-index.json";
+    import explorerData from "../../data/normalized/explorer.json";
+    import indexData from "../../data/normalized/observatory-index.json";
     import { PALETTES } from "../lib/palettes.js";
+    import type {
+      Explorer,
+      ObservatoryIndex,
+      ObservatorySession,
+      ObservatoryResource,
+      SessionCell,
+    } from "../lib/types";
+
+    const explorer = explorerData as Explorer;
+    const index = indexData as ObservatoryIndex;
 
     const { years, topics, sessionCells } = explorer;
     const { sessions, resources } = index;
-    const resourceById = new Map(resources.map((r) => [r.id, r]));
+    const resourceById = new Map<number, ObservatoryResource>(
+      resources.map((r) => [r.id, r])
+    );
 
-    const topicIndex = new Map(topics.map((t, i) => [t.id, i]));
-    const palette = () => {
+    const topicIndex = new Map<number, number>(topics.map((t, i) => [t.id, i]));
+    const palettes = PALETTES as Record<string, string[]>;
+    const palette = (): string[] => {
       const theme = document.documentElement.dataset.theme;
-      return PALETTES[theme] ?? PALETTES.ledger;
+      return (theme ? palettes[theme] : undefined) ?? palettes.ledger;
     };
-    const colorOf = (topicId) => {
+    const colorOf = (topicId: number): string => {
       const p = palette();
-      return p[topicIndex.get(topicId) % p.length];
+      return p[(topicIndex.get(topicId) ?? 0) % p.length];
     };
     const topicColor = { get: colorOf };
-    const topicTitle = new Map(topics.map((t) => [t.id, t.title]));
-    const topicGlyph = new Map(topics.map((t) => [t.id, t.glyph]));
-    const slugOf = (title) =>
-      title.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    const topicBySlug = new Map(topics.map((t) => [slugOf(t.title), t]));
+    const topicTitle = new Map<number, string>(topics.map((t) => [t.id, t.title]));
+    const topicGlyph = new Map<number, string | null>(
+      topics.map((t) => [t.id, t.glyph])
+    );
 
-    const MEASURES = {
+    type Measure = { label: string; of: (c: SessionCell) => number; int: boolean };
+    const MEASURES: Record<string, Measure> = {
       sessions: { label: "sessions", of: (c) => c.sessions, int: true },
       hours: { label: "hours", of: (c) => c.seconds / 3600, int: false },
       snippets: { label: "code snippets", of: (c) => c.snippets, int: true },
@@ -140,7 +153,7 @@ const spanYears = years.length;
     // Counts can't be fractional: keep the value axis on whole numbers.
     // Small ranges get a tick per integer; larger ones keep Plot's nice
     // steps but never a decimal label.
-    const valScale = (measure, maxVal) =>
+    const valScale = (measure: Measure, maxVal: number) =>
       !measure.int
         ? {}
         : { tickFormat: "d", ...(maxVal <= 8 ? { interval: 1 } : {}) };
@@ -151,30 +164,55 @@ const spanYears = years.length;
       { key: "guide", label: "Guides" },
       { key: "download", label: "Downloads" },
     ];
-    const SESSION_SORTS = {
+    type ResourceEntry = { r: ObservatoryResource; by: ObservatorySession[] };
+    type SessionSort = {
+      label: string;
+      fn: (a: ObservatorySession, b: ObservatorySession) => number;
+    };
+    type ResourceSort = {
+      label: string;
+      fn: (a: ResourceEntry, b: ResourceEntry) => number;
+    };
+    const SESSION_SORTS: Record<string, SessionSort> = {
       newest: { label: "Newest", fn: (a, b) => b.y - a.y || b.d - a.d },
       oldest: { label: "Oldest", fn: (a, b) => a.y - b.y || b.d - a.d },
       longest: { label: "Longest", fn: (a, b) => b.d - a.d },
       code: { label: "Most code", fn: (a, b) => b.c - a.c },
       title: { label: "Title A–Z", fn: (a, b) => a.t.localeCompare(b.t) },
     };
-    const RESOURCE_SORTS = {
+    const RESOURCE_SORTS: Record<string, ResourceSort> = {
       title: { label: "Title A–Z", fn: (a, b) => a.r.t.localeCompare(b.r.t) },
       cited: { label: "Most cited", fn: (a, b) => b.by.length - a.by.length },
     };
 
     // ——— state: years/topics/q live in the site-wide cross-section bar
     // (window.dhFilter); this page owns only measure, kind and sort. ———
+    type DhFilter = { years: Set<number>; topics: Set<number>; q: string };
+    declare global {
+      interface Window {
+        dhFilter?: DhFilter;
+      }
+    }
+    type State = {
+      measure: string;
+      kind: string;
+      sort: string | null;
+      view: "grid" | "list";
+      expanded: boolean;
+    };
     const params = new URLSearchParams(location.search);
-    const state = {
-      measure: MEASURES[params.get("measure")] ? params.get("measure") : "sessions",
-      kind: KINDS.some((k) => k.key === params.get("kind")) ? params.get("kind") : "sessions",
+    const measureParam = params.get("measure");
+    const kindParam = params.get("kind");
+    const state: State = {
+      measure: measureParam && MEASURES[measureParam] ? measureParam : "sessions",
+      kind: KINDS.some((k) => k.key === kindParam) && kindParam ? kindParam : "sessions",
       sort: params.get("sort"),
       view: params.get("view") === "grid" ? "grid" : "list",
       expanded: false,
     };
-    const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
-    const activeSet = () => {
+    const F = (): DhFilter =>
+      window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+    const activeSet = (): Set<number> => {
       const f = F();
       return f.topics.size ? f.topics : new Set(topics.map((t) => t.id));
     };
@@ -190,13 +228,13 @@ const spanYears = years.length;
 
     const barRx = () =>
       (document.documentElement.dataset.theme ?? "").startsWith("cupertino") ? 4 : 0;
-    const css = (name) =>
+    const css = (name: string) =>
       getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-    const fmt = (n) => Math.round(n).toLocaleString("en");
-    const yearLabel = (y) => `WWDC${String(y).slice(2)}`;
-    const shortYear = (y) => `’${String(y).slice(2)}`;
-    const minutes = (d) => (d ? `${Math.round(d / 60)} min` : "—");
-    const yearIn = (y) => {
+    const fmt = (n: number) => Math.round(n).toLocaleString("en");
+    const yearLabel = (y: number) => `WWDC${String(y).slice(2)}`;
+    const shortYear = (y: number) => `’${String(y).slice(2)}`;
+    const minutes = (d: number) => (d ? `${Math.round(d / 60)} min` : "—");
+    const yearIn = (y: number) => {
       const f = F();
       return f.years.size === 0 || f.years.has(y);
     };
@@ -205,16 +243,24 @@ const spanYears = years.length;
       return f.years.size ? [...f.years].sort().map(shortYear).join("+") : null;
     };
 
+    // ——— typed DOM helpers ———
+    // dh-chips dispatches a CustomEvent with { value } in detail; it also
+    // exposes a writable `value`. Treat the element loosely for both.
+    type ChipsElement = HTMLElement & { value: string };
+    type ChipsEvent = CustomEvent<{ value: string }>;
+    const byId = <T extends HTMLElement = HTMLElement>(id: string): T =>
+      document.getElementById(id) as T;
+
     // ——— controls: every group is a <dh-chips>; pages own the state and
     // re-render on the element's change event. ———
-    const measureChips = document.getElementById("measure-chips");
+    const measureChips = byId<ChipsElement>("measure-chips");
     measureChips.value = state.measure;
     measureChips.addEventListener("change", (e) => {
-      state.measure = e.detail.value;
+      state.measure = (e as ChipsEvent).detail.value;
       render();
     });
 
-    const kindChips = document.getElementById("kind-chips");
+    const kindChips = byId<ChipsElement>("kind-chips");
     for (const k of KINDS) {
       const b = document.createElement("button");
       b.type = "button";
@@ -224,28 +270,29 @@ const spanYears = years.length;
       kindChips.append(b);
     }
     kindChips.addEventListener("change", (e) => {
-      state.kind = e.detail.value;
+      state.kind = (e as ChipsEvent).detail.value;
       state.sort = null;
       state.expanded = false;
       render();
     });
 
-    const viewChips = document.getElementById("view-chips");
+    const viewChips = byId<ChipsElement>("view-chips");
     viewChips.addEventListener("change", (e) => {
-      state.view = e.detail.value;
+      state.view = (e as ChipsEvent).detail.value === "grid" ? "grid" : "list";
       render();
     });
 
-    const sortSelect = document.getElementById("cross-sort");
+    const sortSelect = byId<HTMLSelectElement>("cross-sort");
     sortSelect.addEventListener("change", () => {
       state.sort = sortSelect.value;
       state.expanded = false;
       render();
     });
-    function syncSortOptions() {
-      const sorts = state.kind === "sessions" ? SESSION_SORTS : RESOURCE_SORTS;
+    function syncSortOptions(): SessionSort["fn"] | ResourceSort["fn"] {
+      const sorts: Record<string, SessionSort | ResourceSort> =
+        state.kind === "sessions" ? SESSION_SORTS : RESOURCE_SORTS;
       const fallback = state.kind === "sessions" ? "newest" : "title";
-      if (!sorts[state.sort]) state.sort = fallback;
+      if (!state.sort || !sorts[state.sort]) state.sort = fallback;
       sortSelect.replaceChildren(
         ...Object.entries(sorts).map(([key, s]) => {
           const o = document.createElement("option");
@@ -258,7 +305,7 @@ const spanYears = years.length;
       return sorts[state.sort].fn;
     }
 
-    const moreButton = document.getElementById("cross-more");
+    const moreButton = byId<HTMLButtonElement>("cross-more");
     moreButton.addEventListener("click", () => {
       state.expanded = true;
       render();
@@ -267,25 +314,38 @@ const spanYears = years.length;
     // Chart ⇄ table per panel — both views are first-class.
     document.querySelectorAll(".panel .view-toggle").forEach((group) => {
       const panel = group.closest(".panel");
+      if (!panel) return;
       group.addEventListener("change", (e) => {
-        panel.querySelector(".plot").hidden = e.detail.value !== "chart";
-        panel.querySelector(".chart-table").hidden = e.detail.value !== "table";
+        const value = (e as ChipsEvent).detail.value;
+        const plot = panel.querySelector<HTMLElement>(".plot");
+        const table = panel.querySelector<HTMLElement>(".chart-table");
+        if (plot) plot.hidden = value !== "chart";
+        if (table) table.hidden = value !== "table";
       });
     });
 
     // ——— rendering ———
     // Charts are presentational (aria-hidden); the same data is always
     // available as a real table right under each panel.
-    const mount = (id, node) => {
+    const mount = (id: string, node: Element) => {
       node.setAttribute("aria-hidden", "true");
-      document.getElementById(id).replaceChildren(node);
+      byId(id).replaceChildren(node);
     };
 
     // Topic distribution as a donut: every topic is a slice sized by its
     // share of the scope; icons ride the wide slices, the hovered slice
     // names itself in the hole, and a click toggles that topic upstream.
+    type TopicDatum = { topic: string; id: number; value: number };
     const SVGNS = "http://www.w3.org/2000/svg";
-    const donutChart = (data, { width, total, measureLabel, scopeLabel }) => {
+    const donutChart = (
+      data: TopicDatum[],
+      {
+        width,
+        total,
+        measureLabel,
+        scopeLabel,
+      }: { width: number; total: number; measureLabel: string; scopeLabel: string }
+    ) => {
       const size = Math.max(220, Math.min(width, 360));
       const cx = size / 2;
       const cy = size / 2;
@@ -293,8 +353,8 @@ const spanYears = years.length;
       const innerR = outerR * 0.58;
       const iconR = (outerR + innerR) / 2;
       const TAU = Math.PI * 2;
-      const polar = (r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
-      const arcPath = (r0, r1, s, e) => {
+      const polar = (r: number, a: number) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+      const arcPath = (r0: number, r1: number, s: number, e: number) => {
         const [x0, y0] = polar(r1, s);
         const [x1, y1] = polar(r1, e);
         const [x2, y2] = polar(r0, e);
@@ -319,8 +379,8 @@ const spanYears = years.length;
 
       const svg = document.createElementNS(SVGNS, "svg");
       svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
-      svg.setAttribute("width", size);
-      svg.setAttribute("height", size);
+      svg.setAttribute("width", String(size));
+      svg.setAttribute("height", String(size));
       svg.setAttribute("aria-hidden", "true");
       svg.classList.add("donut");
 
@@ -351,19 +411,19 @@ const spanYears = years.length;
         if (frac * TAU * iconR > 22) {
           const [ix, iy] = polar(iconR, mid);
           const badge = document.createElementNS(SVGNS, "circle");
-          badge.setAttribute("cx", ix);
-          badge.setAttribute("cy", iy);
-          badge.setAttribute("r", 11);
+          badge.setAttribute("cx", String(ix));
+          badge.setAttribute("cy", String(iy));
+          badge.setAttribute("r", "11");
           badge.classList.add("donut-badge");
           g.append(badge);
           const glyph = topicGlyph.get(d.id);
           if (glyph) {
             const img = document.createElementNS(SVGNS, "image");
             img.setAttribute("href", glyph);
-            img.setAttribute("x", ix - 7);
-            img.setAttribute("y", iy - 7);
-            img.setAttribute("width", 14);
-            img.setAttribute("height", 14);
+            img.setAttribute("x", String(ix - 7));
+            img.setAttribute("y", String(iy - 7));
+            img.setAttribute("width", "14");
+            img.setAttribute("height", "14");
             img.classList.add("donut-glyph");
             g.append(img);
           }
@@ -375,7 +435,9 @@ const spanYears = years.length;
         });
         g.addEventListener("mouseleave", resetCenter);
         g.addEventListener("click", () => {
-          document.querySelector(`#dh-topics button[data-value="${d.id}"]`)?.click();
+          document
+            .querySelector<HTMLElement>(`#dh-topics button[data-value="${d.id}"]`)
+            ?.click();
         });
         svg.append(g);
         a0 = a1;
@@ -384,10 +446,14 @@ const spanYears = years.length;
       wrap.append(svg, center);
       return wrap;
     };
-    const esc = (v) =>
+    const esc = (v: string | number) =>
       String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const dataTable = (id, headers, rows) => {
-      document.getElementById(id).innerHTML = `<table class="ledger">
+    const dataTable = (
+      id: string,
+      headers: (string | number)[],
+      rows: (string | number)[][]
+    ) => {
+      byId(id).innerHTML = `<table class="ledger">
         <thead><tr>${headers.map((h) => `<th scope="col">${esc(h)}</th>`).join("")}</tr></thead>
         <tbody>${rows
           .map(
@@ -416,8 +482,7 @@ const spanYears = years.length;
 
     function renderCrossSection() {
       const matched = matchingSessions();
-      const summary = document.getElementById("cross-summary");
-      const results = document.getElementById("cross-results");
+      const summary = byId("cross-summary");
 
       kindChips.value = state.kind;
       viewChips.hidden = state.kind !== "sessions";
@@ -425,7 +490,7 @@ const spanYears = years.length;
 
       const sortFn = syncSortOptions();
       if (state.kind === "sessions") {
-        const list = [...matched].sort(sortFn);
+        const list = [...matched].sort(sortFn as SessionSort["fn"]);
         const visible = state.expanded ? list : list.slice(0, PREVIEW);
         summary.textContent = `${list.length} sessions matching any active topic${yearScope() ? ` · ${yearScope()}` : ""}`;
         const grid = state.view === "grid";
@@ -451,35 +516,38 @@ const spanYears = years.length;
               <span class="row-leader" aria-hidden="true"></span>
               <span class="row-duration">${minutes(s.d)}</span>`;
           }
-          row.querySelector("a").textContent = s.t;
+          const titleLink = row.querySelector("a");
+          if (titleLink) titleLink.textContent = s.t;
           rows.append(row);
         });
         mount("cross-results", rows);
         moreButton.hidden = state.expanded || list.length <= PREVIEW;
         moreButton.textContent = `Show all ${list.length}`;
       } else {
-        const seen = new Map();
+        const seen = new Map<number, ResourceEntry>();
         for (const s of matched) {
           for (const rid of s.r) {
             const r = resourceById.get(rid);
             if (!r || r.type !== state.kind) continue;
-            const entry = seen.get(rid) ?? { r, by: [] };
+            const entry: ResourceEntry = seen.get(rid) ?? { r, by: [] };
             entry.by.push(s);
             seen.set(rid, entry);
           }
         }
-        const list = [...seen.values()].sort(sortFn);
+        const list = [...seen.values()].sort(sortFn as ResourceSort["fn"]);
         const visible = state.expanded ? list : list.slice(0, PREVIEW * 2);
-        summary.textContent = `${list.length} ${KINDS.find((k) => k.key === state.kind).label.toLowerCase()}${yearScope() ? ` · ${yearScope()}` : ""}`;
+        const kindLabel = KINDS.find((k) => k.key === state.kind)?.label ?? "";
+        summary.textContent = `${list.length} ${kindLabel.toLowerCase()}${yearScope() ? ` · ${yearScope()}` : ""}`;
         const ul = document.createElement("ul");
         ul.className = "plain";
         for (const { r, by } of visible) {
           const li = document.createElement("li");
           const link = document.createElement("a");
-          link.href = r.u;
+          link.href = r.u as string;
           link.rel = "external";
           link.innerHTML = `<strong></strong>`;
-          link.querySelector("strong").textContent = r.t;
+          const strong = link.querySelector("strong");
+          if (strong) strong.textContent = r.t;
           li.append(link);
           const meta = document.createElement("span");
           meta.className = "meta";
@@ -507,9 +575,9 @@ const spanYears = years.length;
       const m = MEASURES[state.measure];
       const active = activeSet();
       const cells = sessionCells.filter((c) => active.has(c.topicId));
-      const widthOf = (id) => Math.max(280, document.getElementById(id).clientWidth - 8);
+      const widthOf = (id: string) => Math.max(280, byId(id).clientWidth - 8);
       const width = widthOf("panel-years");
-      const tipYear = { format: { x: (y) => yearLabel(y) } };
+      const tipYear = { format: { x: (y: number) => yearLabel(y) } };
 
 
       // A · measure per year
@@ -520,7 +588,7 @@ const spanYears = years.length;
       const total = perYear
         .filter((d) => yearIn(d.year))
         .reduce((n, d) => n + d.value, 0);
-      document.getElementById("caption-years").textContent =
+      byId("caption-years").textContent =
         `${m.label} by year, primary topic · ${fmt(total)} ${yearScope() ?? "total"}`;
       mount(
         "plot-years",
@@ -568,7 +636,7 @@ const spanYears = years.length;
         .filter((d) => d.value > 0)
         .sort((a, b) => b.value - a.value);
       const distScope = yearScope() ?? "all years";
-      document.getElementById("caption-distribution").textContent =
+      byId("caption-distribution").textContent =
         `${m.label} by primary topic · ${distScope}`;
       dataTable(
         "data-distribution",
@@ -614,7 +682,7 @@ const spanYears = years.length;
         .filter((d) => d.value > 0)
         .sort((a, b) => b.value - a.value);
       const shareTotal = allTopics.reduce((n, d) => n + d.value, 0);
-      document.getElementById("caption-share").textContent =
+      byId("caption-share").textContent =
         `${m.label} share by topic · ${distScope}`;
       dataTable(
         "data-share",
@@ -638,10 +706,17 @@ const spanYears = years.length;
       // C · topic lines across years — the year selection narrows the span.
       const sel = F().years.size ? [...F().years].sort((a, b) => a - b) : null;
       const yMin = sel ? sel[0] : years[0];
-      const yMax = sel ? sel.at(-1) : years.at(-1);
+      const yMax = (sel ? sel.at(-1) : years.at(-1)) ?? yMin;
       const spanYears = years.filter((y) => y >= yMin && y <= yMax);
       const single = yMin === yMax;
-      const lineData = cells
+      type LineDatum = {
+        year: number;
+        topic: string;
+        id: number;
+        value: number;
+        iconY?: number;
+      };
+      const lineData: LineDatum[] = cells
         .filter((c) => c.year >= yMin && c.year <= yMax)
         .map((c) => ({
           year: c.year,
@@ -649,7 +724,7 @@ const spanYears = years.length;
           id: c.topicId,
           value: m.of(c),
         }));
-      document.getElementById("caption-lines").textContent =
+      byId("caption-lines").textContent =
         `${m.label} per primary topic across years`;
       dataTable(
         "data-lines",
@@ -704,9 +779,9 @@ const spanYears = years.length;
               z: "topic",
               fill: (d) => topicColor.get(d.id),
               r: 2.5,
-              tip: { format: { x: (y) => yearLabel(y) } },
+              tip: { format: { x: (y: number) => yearLabel(y) } },
               channels: { topic: "topic" },
-            }),
+            } as Plot.DotOptions),
             // One glyph at each line's end as identifier; endpoints are
             // nudged apart so they never stack. Black line art, so skipped
             // on dark themes.
@@ -714,7 +789,7 @@ const spanYears = years.length;
               ? Plot.image(
                   (() => {
                     const ends = Object.values(
-                      lineData.reduce((acc, d) => {
+                      lineData.reduce<Record<number, LineDatum>>((acc, d) => {
                         if (!acc[d.id] || d.year > acc[d.id].year) acc[d.id] = { ...d };
                         return acc;
                       }, {})
@@ -746,7 +821,7 @@ const spanYears = years.length;
     }
 
     render();
-    let resizeTimer;
+    let resizeTimer: ReturnType<typeof setTimeout>;
     addEventListener("resize", () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(render, 150);

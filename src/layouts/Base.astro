@@ -15,7 +15,7 @@ const nav = [
   { label: "Lost & Found", href: "/lost-and-found/", section: "/lost-and-found" },
   { label: "Dispatches", href: "/dispatches/", section: "/dispatches" },
 ];
-const current = (section) => (path.startsWith(section) ? "page" : undefined);
+const current = (section: string) => (path.startsWith(section) ? "page" : undefined);
 const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as data";
 const desc =
   description ??
@@ -67,6 +67,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <meta property="og:image" content={og} />
     <meta name="twitter:card" content="summary_large_image" />
     <script
+      is:inline
       defer
       src="https://analytics.elkraneo.com/script.js"
       data-website-id="9006f154-3ede-428f-8fff-9174f6c9c8d9"

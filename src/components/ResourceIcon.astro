@@ -1,11 +1,13 @@
 ---
 import { RESOURCE_ICONS, TYPE_LABELS } from "../lib/resource-icons.js";
 
-const { type } = Astro.props;
-const label = TYPE_LABELS[type] ?? type;
+const { type } = Astro.props as { type: string };
+const labels = TYPE_LABELS as Record<string, string>;
+const icons = RESOURCE_ICONS as Record<string, string>;
+const label = labels[type] ?? type;
 ---
 
 <span class="res-icon" title={label}>
-  <Fragment set:html={RESOURCE_ICONS[type] ?? ""} />
+  <Fragment set:html={icons[type] ?? ""} />
   <span class="visually-hidden">{label}</span>
 </span>

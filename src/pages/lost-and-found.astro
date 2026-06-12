@@ -61,31 +61,52 @@ const { counts } = lostAndFound;
   <p><button type="button" class="watch secondary" id="lf-more" hidden></button></p>
 
   <script>
-    import data from "../../data/normalized/lost-and-found.json";
-    import topics from "../../data/normalized/topics.json";
+    import dataJson from "../../data/normalized/lost-and-found.json";
+    import topicsJson from "../../data/normalized/topics.json";
     import { RESOURCE_ICONS, TYPE_LABELS } from "../lib/resource-icons.js";
+    import type { LostAndFound, LostItem, Topic } from "../lib/types";
 
-    const KIND_LABEL = { session: "Session", resource: "Resource" };
-    const topicById = new Map(topics.map((t) => [t.id, t.title]));
+    type DhFilter = { years: Set<number>; topics: Set<number>; q: string };
+    type DhChipsChangeEvent = Event & { detail: { value: string } };
+    type DhChipsElement = HTMLElement & { value: string };
+    declare global {
+      interface Window {
+        dhFilter?: DhFilter;
+      }
+    }
+
+    const data = dataJson as LostAndFound;
+    const topics = topicsJson as Topic[];
+    const RESOURCE_ICON_MAP: Record<string, string> = RESOURCE_ICONS;
+    const TYPE_LABEL_MAP: Record<string, string> = TYPE_LABELS;
+
+    const topicById = new Map<number, string>(
+      topics.map((t: Topic) => [t.id, t.title])
+    );
     const all = data.items;
 
-    const state = { status: null, kind: null, expanded: false };
+    const state: { status: string | null; kind: string | null; expanded: boolean } = {
+      status: null,
+      kind: null,
+      expanded: false,
+    };
     const PREVIEW = 60;
-    const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+    const F = (): DhFilter =>
+      window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
 
-    const rowsEl = document.getElementById("lf-rows");
-    const countEl = document.getElementById("lf-count");
-    const moreEl = document.getElementById("lf-more");
-    const statusChips = document.getElementById("lf-status-chips");
-    const kindChips = document.getElementById("lf-kind-chips");
+    const rowsEl = document.getElementById("lf-rows")!;
+    const countEl = document.getElementById("lf-count")!;
+    const moreEl = document.getElementById("lf-more")!;
+    const statusChips = document.getElementById("lf-status-chips") as DhChipsElement;
+    const kindChips = document.getElementById("lf-kind-chips") as DhChipsElement;
 
     statusChips.addEventListener("change", (e) => {
-      state.status = e.detail.value || null;
+      state.status = (e as DhChipsChangeEvent).detail.value || null;
       state.expanded = false;
       render();
     });
     kindChips.addEventListener("change", (e) => {
-      state.kind = e.detail.value || null;
+      state.kind = (e as DhChipsChangeEvent).detail.value || null;
       state.expanded = false;
       render();
     });
@@ -94,9 +115,9 @@ const { counts } = lostAndFound;
       render();
     });
 
-    function matchesFilter(x, f) {
-      if (f.years.size && !f.years.has(x.year)) return false;
-      if (f.topics.size && !f.topics.has(x.primaryTopicId)) return false;
+    function matchesFilter(x: LostItem, f: DhFilter) {
+      if (f.years.size && !f.years.has(x.year as number)) return false;
+      if (f.topics.size && !f.topics.has(x.primaryTopicId as number)) return false;
       return true;
     }
 
@@ -111,7 +132,7 @@ const { counts } = lostAndFound;
         if (state.status === "tombstone" && x.recoverable !== false) return false;
         if (state.kind && x.kind !== state.kind) return false;
         if (!matchesFilter(x, f)) return false;
-        if (q && !x.title.toLowerCase().includes(q)) return false;
+        if (q && !(x.title ?? "").toLowerCase().includes(q)) return false;
         return true;
       });
       countEl.textContent = `${list.length.toLocaleString("en")} delisted items`;
@@ -124,8 +145,8 @@ const { counts } = lostAndFound;
 
           // Item: kind/type icon + title (+ topic).
           const itemCell = document.createElement("td");
-          const icon = x.kind === "resource" ? (RESOURCE_ICONS[x.type] ?? "") : SESSION_ICON;
-          const kindName = x.kind === "resource" ? (TYPE_LABELS[x.type] ?? x.type) : "Session";
+          const icon = x.kind === "resource" ? (RESOURCE_ICON_MAP[x.type ?? ""] ?? "") : SESSION_ICON;
+          const kindName = x.kind === "resource" ? (TYPE_LABEL_MAP[x.type ?? ""] ?? x.type ?? "") : "Session";
           const title = document.createElement("span");
           title.className = "lf-title";
           title.textContent = x.title;
@@ -133,7 +154,7 @@ const { counts } = lostAndFound;
           itemCell.append(title);
           const sub = document.createElement("p");
           sub.className = "meta lf-sub";
-          sub.textContent = [kindName, topicById.get(x.primaryTopicId)].filter(Boolean).join(" · ");
+          sub.textContent = [kindName, x.primaryTopicId != null ? topicById.get(x.primaryTopicId) : undefined].filter(Boolean).join(" · ");
           itemCell.append(sub);
 
           // Year.

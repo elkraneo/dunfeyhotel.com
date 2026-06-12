@@ -2,19 +2,20 @@
 // "At first glance" figures for dispatches: a year (optionally scoped to a
 // topic) compared against the previous year.
 import { sessions, topicBySlug } from "../lib/data.js";
+import type { Session } from "../lib/types";
 
 const { year, topic } = Astro.props;
 const t = topic ? topicBySlug.get(topic) : null;
 
-const scope = (y) =>
-  sessions.filter((s) => s.year === y && (!t || s.topicIds.includes(t.id)));
+const scope = (y: number): Session[] =>
+  sessions.filter((s: Session) => s.year === y && (!t || s.topicIds.includes(t.id)));
 
 const now = scope(year);
 const before = scope(year - 1);
-const hours = (list) =>
-  Math.round(list.reduce((n, s) => n + (s.duration ?? 0), 0) / 3600);
-const snippets = (list) => list.reduce((n, s) => n + s.codeSnippets.length, 0);
-const delta = (a, b) => (b === 0 ? "—" : `${a >= b ? "+" : ""}${a - b} vs '${String(year - 1).slice(2)}`);
+const hours = (list: Session[]) =>
+  Math.round(list.reduce((n: number, s: Session) => n + (s.duration ?? 0), 0) / 3600);
+const snippets = (list: Session[]) => list.reduce((n: number, s: Session) => n + s.codeSnippets.length, 0);
+const delta = (a: number, b: number) => (b === 0 ? "—" : `${a >= b ? "+" : ""}${a - b} vs '${String(year - 1).slice(2)}`);
 ---
 
 <div class="figures">
