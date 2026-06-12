@@ -47,6 +47,7 @@ import Base from "../layouts/Base.astro";
     const PAGE = 12;
     let shown = PAGE;
     let lastResults = [];
+    let renderGen = 0;
 
     moreEl.addEventListener("click", () => {
       shown += PAGE;
@@ -54,11 +55,15 @@ import Base from "../layouts/Base.astro";
     });
 
     async function renderList() {
-      // Walk results lazily, keeping up to `shown` that pass the lost filter.
+      // Walk results lazily, keeping up to `shown` that pass the filters.
+      // A generation token lets a newer render cancel a slow in-flight one
+      // (filtering to a rare type can walk the whole result set).
+      const gen = ++renderGen;
       const items = [];
       let i = 0;
       while (i < lastResults.length && items.length < shown) {
         const d = await lastResults[i].data();
+        if (gen !== renderGen) return;
         i++;
         if (!includeLost && isLost(d.url)) continue;
         items.push(d);
