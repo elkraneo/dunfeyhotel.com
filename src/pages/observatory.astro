@@ -62,9 +62,19 @@ import Base from "../layouts/Base.astro";
     <h2 class="kicker" id="cross-section">Cross-section</h2>
     <div class="cross-controls">
       <dh-chips class="chip-row" mode="single" aria-label="Collect as" id="kind-chips"></dh-chips>
-      <dh-chips class="chip-row" mode="single" value="list" aria-label="Display" id="view-chips">
-        <button type="button" class="chip" data-value="list">List</button>
-        <button type="button" class="chip" data-value="grid">Grid</button>
+      <dh-chips class="seg" mode="single" value="list" aria-label="Display" id="view-chips">
+        <button type="button" class="seg-opt" data-value="list">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+            <line x1="2.5" y1="4" x2="13.5" y2="4" /><line x1="2.5" y1="8" x2="13.5" y2="8" /><line x1="2.5" y1="12" x2="13.5" y2="12" />
+          </svg>
+          <span>List</span>
+        </button>
+        <button type="button" class="seg-opt" data-value="grid">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+            <rect x="2.3" y="2.3" width="4.6" height="4.6" rx="1" /><rect x="9.1" y="2.3" width="4.6" height="4.6" rx="1" /><rect x="2.3" y="9.1" width="4.6" height="4.6" rx="1" /><rect x="9.1" y="9.1" width="4.6" height="4.6" rx="1" />
+          </svg>
+          <span>Grid</span>
+        </button>
       </dh-chips>
       <label class="meta" for="cross-sort">
         Sort
