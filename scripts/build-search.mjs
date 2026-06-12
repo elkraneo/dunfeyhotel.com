@@ -72,7 +72,7 @@ try {
         x.year ? `, WWDC${String(x.year).slice(2)}` : ""
       }.`,
       language: "en",
-      meta: { title: `${x.title} — lost & found` },
+      meta: { title: `${x.title} — lost & found`, status },
       filters,
     });
     lostAdded++;

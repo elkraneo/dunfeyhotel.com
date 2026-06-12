@@ -17,7 +17,13 @@ import Base from "../layouts/Base.astro";
     </p>
   </section>
 
-  <p class="meta" id="s-count" role="status"></p>
+  <div class="s-controls">
+    <p class="meta" id="s-count" role="status"></p>
+    <dh-chips class="chip-row" mode="single" value="in" aria-label="Lost &amp; found in search" id="s-lost-chips">
+      <button type="button" class="chip" data-value="in">Lost &amp; found in</button>
+      <button type="button" class="chip" data-value="out">Lost &amp; found out</button>
+    </dh-chips>
+  </div>
   <ol class="plain search-results" id="s-results" data-dh-reactive></ol>
   <p><button type="button" class="watch secondary" id="s-more" hidden>More results</button></p>
 
@@ -25,7 +31,10 @@ import Base from "../layouts/Base.astro";
     const countEl = document.getElementById("s-count");
     const resultsEl = document.getElementById("s-results");
     const moreEl = document.getElementById("s-more");
+    const lostChips = document.getElementById("s-lost-chips");
     const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+    const isLost = (url) => url.startsWith("/lost-and-found/");
+    let includeLost = true;
 
     let pagefind = null;
     try {
@@ -45,16 +54,34 @@ import Base from "../layouts/Base.astro";
     });
 
     async function renderList() {
-      const slice = lastResults.slice(0, shown);
-      const items = await Promise.all(slice.map((r) => r.data()));
+      // Walk results lazily, keeping up to `shown` that pass the lost filter.
+      const items = [];
+      let i = 0;
+      while (i < lastResults.length && items.length < shown) {
+        const d = await lastResults[i].data();
+        i++;
+        if (!includeLost && isLost(d.url)) continue;
+        items.push(d);
+      }
       resultsEl.replaceChildren(
         ...items.map((d) => {
           const li = document.createElement("li");
+          const lost = isLost(d.url);
+          if (lost) li.className = "lost";
           const h = document.createElement("h3");
           const a = document.createElement("a");
           a.href = d.url;
-          a.textContent = d.meta?.title ?? d.url;
+          // Strip the "— lost & found" suffix; a badge carries the marker.
+          a.textContent = lost
+            ? (d.meta?.title ?? d.url).replace(/\s*—\s*lost & found$/i, "")
+            : d.meta?.title ?? d.url;
           h.append(a);
+          if (lost) {
+            const badge = document.createElement("span");
+            badge.className = `lf-badge${d.meta?.status === "removed" ? " removed" : ""}`;
+            badge.textContent = d.meta?.status === "removed" ? "removed" : "lost & found";
+            h.append(" ", badge);
+          }
           const ex = document.createElement("p");
           ex.className = "excerpt";
           ex.innerHTML = d.excerpt ?? "";
@@ -75,7 +102,8 @@ import Base from "../layouts/Base.astro";
           return li;
         })
       );
-      moreEl.hidden = shown >= lastResults.length;
+      // More remains while results past the filtered window are left.
+      moreEl.hidden = i >= lastResults.length;
     }
 
     let timer;
@@ -101,6 +129,12 @@ import Base from "../layouts/Base.astro";
       countEl.textContent = `${res.results.length.toLocaleString("en")} results`;
       renderList();
     }
+
+    lostChips.addEventListener("change", (e) => {
+      includeLost = e.detail.value !== "out";
+      shown = PAGE;
+      renderList();
+    });
 
     addEventListener("dh-filter", () => {
       clearTimeout(timer);
@@ -141,5 +175,38 @@ import Base from "../layouts/Base.astro";
     color: var(--ink);
     font-weight: 650;
     border-bottom: 2px solid var(--brass);
+  }
+
+  .s-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem 1.2rem;
+    margin-block: 0.4rem 0.8rem;
+  }
+
+  /* Recovered records read as secondary to live content — present, but the
+     archive layer, not the front of the catalog. */
+  .search-results li.lost h3 a {
+    color: var(--ink-soft);
+  }
+
+  .lf-badge {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    padding: 0.05rem 0.4rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 999px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+
+  .lf-badge.removed {
+    color: var(--oxblood);
+    border-color: var(--oxblood);
   }
 </style>
