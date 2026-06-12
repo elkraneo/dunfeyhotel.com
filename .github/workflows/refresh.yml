@@ -2,8 +2,8 @@ name: refresh
 
 # Data refresh only — building and deploying the site is Coolify's job
 # (push-to-deploy from this repo's Dockerfile). This workflow updates the
-# private data repo, then asks Coolify for a fresh build. force=true skips
-# the docker layer cache so the new data is actually cloned.
+# private data repo, then bumps the `data` submodule pointer here; that
+# push is what triggers Coolify to rebuild with the fresh data.
 
 on:
   schedule:
@@ -62,21 +62,16 @@ jobs:
             echo "no new data"
           fi
 
-      - name: Commit youtube map if changed
+      # One commit carries the submodule bump and any youtube-map change;
+      # its push triggers the Coolify rebuild (GitHub App webhook).
+      - name: Bump data pointer (deploys via Coolify webhook)
         run: |
-          if [ -n "$(git status --porcelain etl/youtube-map.json)" ]; then
+          git add data etl/youtube-map.json
+          if [ -n "$(git status --porcelain --cached)" ]; then
             git config user.name "dunfey-refresh"
             git config user.email "refresh@dunfeyhotel.com"
-            git add etl/youtube-map.json
-            git commit -m "Automated refresh: YouTube map $(date -u +%F)"
+            git commit -m "Automated refresh: $(date -u +%F)"
             git push
+          else
+            echo "nothing changed — no deploy needed"
           fi
-
-      - name: Deploy via Coolify
-        env:
-          TOKEN: ${{ secrets.COOLIFY_TOKEN }}
-          APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
-        run: |
-          curl --fail -sS -X GET \
-            -H "Authorization: Bearer $TOKEN" \
-            "https://coolify.reality2713.com/api/v1/deploy?uuid=$APP_UUID&force=true"

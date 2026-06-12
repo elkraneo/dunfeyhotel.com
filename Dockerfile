@@ -1,21 +1,13 @@
-# Build runs on Coolify (push-to-deploy). The site itself is public, but the
-# build needs the private data repo — snapshots, normalized dataset and the
-# transcript cache. Pass a read-only token for it as build arg DATA_REPO_TOKEN.
-#
-# Note: the data repo moves independently of this one. Deploys triggered for
-# data refreshes must not reuse the cached clone layer — keep "Disable build
-# cache" on in Coolify, or deploy with ?force=true.
+# Built by Coolify on push (GitHub App source). The private data repo arrives
+# as the `data` submodule — its relative URL resolves through the same
+# credentials Coolify cloned this repo with, so no extra tokens are needed.
 FROM node:22-alpine AS build
-ARG DATA_REPO_TOKEN
-RUN apk add --no-cache git
 WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN git clone --depth 1 \
-  "https://x-access-token:${DATA_REPO_TOKEN}@github.com/elkraneo/dunfey-hotel-data-private.git" data
 RUN npm run build
 
 FROM nginx:1.27-alpine

@@ -1,6 +1,7 @@
-# Apple-sourced data is never committed: the build fetches it from Apple's CDN.
-# Raw snapshot archives live in apple-vault / private storage, not in this repo.
-data/
+# Apple-sourced data is never committed here: it lives in the private data
+# repo, mounted as the `data` submodule (relative URL, so Coolify's GitHub App
+# token and your own credentials both resolve it). No access? Provision data/
+# yourself — see README.
 
 node_modules/
 dist/

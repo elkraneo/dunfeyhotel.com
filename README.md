@@ -36,12 +36,16 @@ developers conference in 1983.
   (`etl/youtube-map.json`, committed).
 - `scripts/build-search.mjs` — Pagefind index: rendered pages + transcript
   text as custom records (excerpt display only).
-- `src/` — Astro 5 site. `data/` is never committed.
+- `src/` — Astro 5 site.
+- `data/` — a private submodule (the maintained dataset). No Apple content is
+  ever committed to this public repo. Cloning without access to the submodule
+  is expected: provision `data/` yourself with the steps below.
 
 ## Usage
 
 ```sh
 npm ci
+mkdir -p data
 cp etl/endpoints.example.json data/endpoints.json   # then fill in the feed env
 node etl/fetch.mjs
 node etl/normalize.mjs
