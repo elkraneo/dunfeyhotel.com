@@ -7,24 +7,25 @@ const { counts } = lostAndFound;
 
 <Base
   title="Lost & Found"
-  description={`${counts.total.toLocaleString("en")} WWDC sessions and resources Apple has delisted — ${counts.recoverable.toLocaleString("en")} whose original Apple link still works, ${counts.tombstone.toLocaleString("en")} removed for good. Recovered from dated snapshots of Apple's own feed.`}
+  description={`${counts.total.toLocaleString("en")} WWDC sessions and resources no longer listed in Apple's catalog — ${counts.recoverable.toLocaleString("en")} still reachable on Apple's own servers, ${counts.tombstone.toLocaleString("en")} kept here only. Preserved from dated snapshots of Apple's feed.`}
   wide
   searchable={false}
 >
   <section class="hero">
     <p class="kicker">The lost &amp; found</p>
-    <h1>What Apple took down.</h1>
+    <h1>Misplaced, not lost.</h1>
     <p class="lede">
-      Apple quietly removes sessions and resources from its catalog. Each dated
-      snapshot we keep still holds the original link — so we can tell what’s
-      <strong>recoverable</strong> (Apple still serves it, just doesn’t list it)
-      from what’s a <strong>tombstone</strong> (gone, and this is the only
-      record it existed). The drawer Apple wishes you’d forget.
+      Catalogs get tidied, and over the years sessions and resources slip off
+      the shelf — retired, moved, or simply dropped. Because we keep dated
+      snapshots, the original links don’t leave with them: most are still
+      <strong>recoverable</strong> (Apple serves them, they’re just no longer
+      listed), a few are <strong>gone for good</strong> and kept here only. A
+      lost &amp; found for the catalog.
     </p>
     <div class="figures">
-      <div class="figure"><b>{counts.total.toLocaleString("en")}</b><span>delisted</span></div>
+      <div class="figure"><b>{counts.total.toLocaleString("en")}</b><span>off the shelf</span></div>
       <div class="figure"><b>{counts.recoverable.toLocaleString("en")}</b><span>still recoverable</span></div>
-      <div class="figure"><b>{counts.tombstone.toLocaleString("en")}</b><span>removed for good</span></div>
+      <div class="figure"><b>{counts.tombstone.toLocaleString("en")}</b><span>kept here only</span></div>
     </div>
   </section>
 
