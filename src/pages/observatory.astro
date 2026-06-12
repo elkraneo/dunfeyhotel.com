@@ -804,26 +804,30 @@ const spanYears = years.length;
   }
 
   .donut-slice.dim {
-    opacity: 0.6;
-  }
-
-  .donut-slice.dim .donut-glyph {
-    opacity: 0.7;
+    opacity: 0.62;
   }
 
   .donut-slice:hover path {
     opacity: 0.85;
   }
 
+  /* The glyphs are black line art served from Apple's CDN (cross-origin), and
+     CSS filters don't reliably recolour cross-origin <image> across browsers.
+     So the badge is a constant light disc and the glyph stays its native dark:
+     readable on every theme and every slice colour, filter or no filter. */
   .donut-badge {
-    fill: var(--paper);
-    stroke: var(--rule-strong);
+    fill: #f3ecdb;
+    stroke: rgba(0, 0, 0, 0.22);
     stroke-width: 0.75;
     pointer-events: none;
   }
 
+  /* brightness(0) flattens the glyph to a black silhouette regardless of the
+     theme or the source SVG's own colours — deterministic, never inverts the
+     wrong way, and always reads on the light badge. (It also forces the
+     cross-origin <image> to rasterise, which a bare element skips.) */
   .donut-glyph {
-    filter: var(--glyph-filter);
+    filter: brightness(0);
     pointer-events: none;
   }
 

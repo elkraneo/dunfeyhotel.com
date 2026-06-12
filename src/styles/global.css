@@ -640,12 +640,14 @@ h3.kicker {
   border-color: var(--chip-color, var(--ink));
 }
 
-/* Once a selection exists, the unselected dim — everything counts until you choose. */
+/* Once a selection exists, the unselected recede — but stay legible enough
+   to read and pick (they're what you'd activate next). */
 .chip-row[data-filtered] .chip[aria-pressed="false"] {
-  opacity: 0.5;
+  opacity: 0.78;
 }
 
-.chip-row[data-filtered] .chip[aria-pressed="false"]:hover {
+.chip-row[data-filtered] .chip[aria-pressed="false"]:hover,
+.chip-row[data-filtered] .chip[aria-pressed="false"]:focus-visible {
   opacity: 1;
 }
 
@@ -795,9 +797,23 @@ table[data-dh-reactive] td a:hover {
 
 /* ————— the cross-section bar ————— */
 
+/* The front desk is the cross-section every panel answers to, so it rides
+   along: sticks to the top while you scroll the charts and lists. */
 .registry-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--paper);
   border-bottom: 1px solid var(--rule-strong);
+  box-shadow: 0 6px 14px -12px rgba(0, 0, 0, 0.5);
   padding-block: 0.55rem;
+}
+
+/* An open front desk can be tall; keep it from eating the viewport when
+   stuck, scrolling its own chips if the list is long. */
+.registry-bar[open] {
+  max-height: 80dvh;
+  overflow: auto;
 }
 
 .registry-bar summary {
