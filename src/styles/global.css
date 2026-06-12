@@ -1026,6 +1026,13 @@ ul.plain li {
   max-width: 24ch;
 }
 
+/* The force-cast: typeset as code so it reads as Swift, not a typo. */
+.hero h1 .cast {
+  font-family: var(--font-mono);
+  font-size: 0.82em;
+  color: var(--oxblood);
+}
+
 .hero .lede {
   max-width: var(--measure);
   font-size: 1.06rem;
