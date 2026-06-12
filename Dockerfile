@@ -8,7 +8,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npm run build
+# data/normalized is derived output the data repo deliberately doesn't track —
+# regenerate it from the raw snapshots before building.
+RUN node etl/normalize.mjs && npm run build
 
 FROM nginx:1.27-alpine
 COPY --from=build /app/dist /usr/share/nginx/html
