@@ -1,19 +1,23 @@
 ---
 import Base from "../layouts/Base.astro";
+import { years } from "../lib/data.js";
+
+const spanYears = years.length;
 ---
 
 <Base
   title="Observatory"
-  description="Coordinated, explorable views of thirteen years of WWDC — and every cross-section materializes as an actionable list of sessions and resources."
+  description={`Coordinated, explorable views of ${spanYears} years of WWDC — and every cross-section materializes as an actionable list of sessions and resources.`}
   wide
   searchable={false}
 >
   <section class="hero">
     <p class="kicker">The observatory · the view from the roof</p>
-    <h1>Correlate, then collect.</h1>
+    <h1>{spanYears} years, any angle.</h1>
     <p class="lede">
-      Year, topics, measure — the panels answer together; the cross-section
-      below lists the results. The view lives in the URL.
+      Set the controls — year, topics, measure — and the charts update
+      together; the cross-section below lists every matching session. Each
+      view has its own URL.
     </p>
   </section>
 
