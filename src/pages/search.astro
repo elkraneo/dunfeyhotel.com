@@ -11,7 +11,7 @@ import Base from "../layouts/Base.astro";
     <p class="kicker">The concierge</p>
     <h1>Ask for anything in the registry.</h1>
     <p class="lede">
-      Type in the cross-section bar above — full text of titles, descriptions,
+      Full-text search from the front desk above — titles, descriptions,
       on-screen code, catalogs and dispatches. Year and topic chips narrow the
       results.
     </p>
@@ -19,10 +19,10 @@ import Base from "../layouts/Base.astro";
 
   <div class="s-controls">
     <p class="meta" id="s-count" role="status"></p>
-    <dh-chips class="chip-row" mode="single" value="in" aria-label="Lost &amp; found in search" id="s-lost-chips">
-      <button type="button" class="chip" data-value="in">Lost &amp; found in</button>
-      <button type="button" class="chip" data-value="out">Lost &amp; found out</button>
-    </dh-chips>
+    <label class="s-lost-toggle">
+      <input type="checkbox" id="s-lost-check" checked />
+      Include lost &amp; found results
+    </label>
   </div>
   <ol class="plain search-results" id="s-results" data-dh-reactive></ol>
   <p><button type="button" class="watch secondary" id="s-more" hidden>More results</button></p>
@@ -31,7 +31,7 @@ import Base from "../layouts/Base.astro";
     const countEl = document.getElementById("s-count");
     const resultsEl = document.getElementById("s-results");
     const moreEl = document.getElementById("s-more");
-    const lostChips = document.getElementById("s-lost-chips");
+    const lostCheck = document.getElementById("s-lost-check");
     const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
     const isLost = (url) => url.startsWith("/lost-and-found/");
     let includeLost = true;
@@ -130,8 +130,8 @@ import Base from "../layouts/Base.astro";
       renderList();
     }
 
-    lostChips.addEventListener("change", (e) => {
-      includeLost = e.detail.value !== "out";
+    lostCheck.addEventListener("change", () => {
+      includeLost = lostCheck.checked;
       shown = PAGE;
       renderList();
     });
@@ -141,6 +141,9 @@ import Base from "../layouts/Base.astro";
       timer = setTimeout(run, 120);
     });
     run();
+    // The search box lives in the front desk — make sure it's open and ready
+    // on this page, whatever the global collapsed state.
+    document.querySelector(".registry-bar")?.setAttribute("open", "");
     document.getElementById("dh-q")?.focus();
   </script>
 </Base>
@@ -184,6 +187,23 @@ import Base from "../layouts/Base.astro";
     justify-content: space-between;
     gap: 0.6rem 1.2rem;
     margin-block: 0.4rem 0.8rem;
+  }
+
+  .s-lost-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    color: var(--ink-soft);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .s-lost-toggle input {
+    inline-size: 0.95rem;
+    block-size: 0.95rem;
+    cursor: pointer;
   }
 
   /* Recovered records read as secondary to live content — present, but the
