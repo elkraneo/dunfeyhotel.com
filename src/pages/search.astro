@@ -36,6 +36,30 @@ import Base from "../layouts/Base.astro";
     const isLost = (url) => url.startsWith("/lost-and-found/");
     let includeLost = true;
 
+    const esc = (s) =>
+      s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+    // A description of the active front-desk filters, e.g. "2 topics and 1 year".
+    const filterBits = (f) => {
+      const bits = [];
+      if (f.topics.size) bits.push(`${f.topics.size} topic${f.topics.size > 1 ? "s" : ""}`);
+      if (f.years.size) bits.push(`${f.years.size} year${f.years.size > 1 ? "s" : ""}`);
+      return bits;
+    };
+
+    // Drop the year/topic chips (keep the query) and reload so the front desk
+    // re-syncs cleanly — avoids duplicating its internal sync logic here.
+    const clearFilters = () => {
+      try {
+        const stored = JSON.parse(sessionStorage.getItem("dh-filter") || "{}");
+        stored.topics = [];
+        stored.years = [];
+        sessionStorage.setItem("dh-filter", JSON.stringify(stored));
+      } catch {}
+      const q = F().q;
+      location.href = q ? `/search/?q=${encodeURIComponent(q)}` : "/search/";
+    };
+
     let pagefind = null;
     try {
       pagefind = await import("/pagefind/pagefind.js");
@@ -131,7 +155,19 @@ import Base from "../layouts/Base.astro";
       const res = await pagefind.search(q, Object.keys(filters).length ? { filters } : {});
       lastResults = res.results;
       shown = PAGE;
-      countEl.textContent = `${res.results.length.toLocaleString("en")} results`;
+      const bits = filterBits(f);
+      const n = res.results.length;
+      if (n === 0 && bits.length) {
+        // Make clear the zero is a filter narrowing the catalog, not an absence.
+        countEl.innerHTML =
+          `No results${q ? ` for “${esc(q)}”` : ""} — narrowed by ${bits.join(" and ")}. ` +
+          `<button type="button" class="linkish" id="s-clear-filters">Clear filters</button> to broaden.`;
+        document.getElementById("s-clear-filters")?.addEventListener("click", clearFilters);
+      } else {
+        countEl.textContent =
+          `${n.toLocaleString("en")} result${n === 1 ? "" : "s"}` +
+          (bits.length ? ` · narrowed by ${bits.join(" and ")}` : "");
+      }
       renderList();
     }
 
