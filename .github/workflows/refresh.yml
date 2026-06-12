@@ -1,5 +1,10 @@
 name: refresh
 
+# Data refresh only — building and deploying the site is Coolify's job
+# (push-to-deploy from this repo's Dockerfile). This workflow updates the
+# private data repo, then asks Coolify for a fresh build. force=true skips
+# the docker layer cache so the new data is actually cloned.
+
 on:
   schedule:
     - cron: "0 6 * * 1" # Mondays 06:00 UTC
@@ -41,17 +46,8 @@ jobs:
       # Re-normalize so any new YouTube ids land in the dataset.
       - run: node etl/normalize.mjs
 
+      # Validation only: catch broken data before committing and deploying.
       - run: npm run build
-
-      - name: Deploy
-        env:
-          KEY: ${{ secrets.DEPLOY_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/deploy
-          chmod 600 ~/.ssh/deploy
-          ssh-keyscan -H 89.167.18.137 >> ~/.ssh/known_hosts
-          rsync -az --delete -e "ssh -i ~/.ssh/deploy" dist/ root@89.167.18.137:/data/sites/dunfeyhotel/dist/
 
       - name: Archive new data
         run: |
@@ -75,3 +71,12 @@ jobs:
             git commit -m "Automated refresh: YouTube map $(date -u +%F)"
             git push
           fi
+
+      - name: Deploy via Coolify
+        env:
+          TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+          APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+        run: |
+          curl --fail -sS -X GET \
+            -H "Authorization: Bearer $TOKEN" \
+            "https://coolify.reality2713.com/api/v1/deploy?uuid=$APP_UUID&force=true"
