@@ -25,7 +25,7 @@ const total = resources.length;
   <div class="controls" role="group" aria-label="Resource filters">
     <div class="lens">
       <p class="kicker" id="r-types-label">Type</p>
-      <div class="chip-row" role="group" aria-labelledby="r-types-label" id="r-type-chips"></div>
+      <dh-chips class="chip-row" mode="single" value="" aria-labelledby="r-types-label" id="r-type-chips"></dh-chips>
     </div>
   </div>
 
@@ -72,14 +72,14 @@ const total = resources.length;
         b.innerHTML = RESOURCE_ICONS[t] ?? "";
         b.append(` ${TYPE_LABELS[t] ?? t}`);
       }
-      b.addEventListener("click", () => {
-        state.type = t;
-        state.expanded = false;
-        render();
-      });
-      b.dataset.type = t ?? "";
+      b.dataset.value = t ?? "";
       typeChips.append(b);
     }
+    typeChips.addEventListener("change", (e) => {
+      state.type = e.detail.value || null;
+      state.expanded = false;
+      render();
+    });
 
     moreEl.addEventListener("click", () => {
       state.expanded = true;
@@ -100,9 +100,7 @@ const total = resources.length;
     }
 
     function render() {
-      typeChips.querySelectorAll(".chip").forEach((b) =>
-        b.setAttribute("aria-pressed", String((b.dataset.type || null) === state.type))
-      );
+      typeChips.value = state.type ?? "";
 
       const f = F();
       const q = f.q.toLowerCase();

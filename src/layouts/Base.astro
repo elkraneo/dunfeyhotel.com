@@ -79,6 +79,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     />
   </head>
   <body>
+    <script>
+      import "../lib/dh-chips.js";
+    </script>
     <a class="skip-link" href="#main">Skip to content</a>
     <div class:list={["shell", { wide }]}>
       <header class="masthead">
