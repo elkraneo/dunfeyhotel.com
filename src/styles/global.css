@@ -798,10 +798,11 @@ table[data-dh-reactive] td a:hover {
 /* ————— the cross-section bar ————— */
 
 /* The front desk is the cross-section every panel answers to, so it rides
-   along: sticks to the top while you scroll the charts and lists. */
+   along: sticks to the top while you scroll the charts and lists. top:-1px
+   overlaps the viewport edge by a pixel so no content slivers through above. */
 .registry-bar {
   position: sticky;
-  top: 0;
+  top: -1px;
   z-index: 30;
   background: var(--paper);
   border-bottom: 1px solid var(--rule-strong);
@@ -809,11 +810,13 @@ table[data-dh-reactive] td a:hover {
   padding-block: 0.55rem;
 }
 
-/* An open front desk can be tall; keep it from eating the viewport when
-   stuck, scrolling its own chips if the list is long. */
-.registry-bar[open] {
-  max-height: 80dvh;
-  overflow: auto;
+/* On phones the open front desk is taller than the screen — sticking it would
+   trap the viewport, so let it scroll away with the page; collapsed (just the
+   summary) it still sticks as a thin bar. */
+@media (max-width: 760px) {
+  .registry-bar[open] {
+    position: static;
+  }
 }
 
 .registry-bar summary {

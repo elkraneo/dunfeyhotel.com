@@ -35,6 +35,12 @@ const topicData = topics.map((t) => ({ id: t.id, title: t.title, glyph: t.glyph 
 
 <script is:inline define:vars={{ topicData, allYears: years, PALETTES }}>
   (() => {
+    // On phones the front desk starts collapsed (a thin sticky summary bar);
+    // open it taps to expand. Wider screens keep the server-set open state.
+    if (matchMedia("(max-width: 760px)").matches) {
+      document.querySelector(".registry-bar")?.removeAttribute("open");
+    }
+
     // Same theme palettes as the observatory charts (src/lib/palettes.js):
     // category colors are one vocabulary across the whole site.
     const colorOf = (i) => {
