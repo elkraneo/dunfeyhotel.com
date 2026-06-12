@@ -51,6 +51,15 @@ const spanYears = years.length;
       <div class="plot" id="plot-distribution"></div>
       <div class="chart-table" id="data-distribution" hidden></div>
     </figure>
+    <figure class="panel" id="panel-share">
+      <figcaption class="kicker" id="caption-share"></figcaption>
+      <dh-chips class="view-toggle" mode="single" value="chart" aria-label="Show as">
+        <button type="button" class="chip" data-value="chart">Donut</button>
+        <button type="button" class="chip" data-value="table">Table</button>
+      </dh-chips>
+      <div class="plot" id="plot-share"></div>
+      <div class="chart-table" id="data-share" hidden></div>
+    </figure>
     <figure class="panel wide" id="panel-lines">
       <figcaption class="kicker" id="caption-lines"></figcaption>
       <dh-chips class="view-toggle" mode="single" value="chart" aria-label="Show as">
@@ -271,6 +280,110 @@ const spanYears = years.length;
       node.setAttribute("aria-hidden", "true");
       document.getElementById(id).replaceChildren(node);
     };
+
+    // Topic distribution as a donut: every topic is a slice sized by its
+    // share of the scope; icons ride the wide slices, the hovered slice
+    // names itself in the hole, and a click toggles that topic upstream.
+    const SVGNS = "http://www.w3.org/2000/svg";
+    const donutChart = (data, { width, total, measureLabel, scopeLabel }) => {
+      const size = Math.max(220, Math.min(width, 360));
+      const cx = size / 2;
+      const cy = size / 2;
+      const outerR = size / 2 - 6;
+      const innerR = outerR * 0.58;
+      const iconR = (outerR + innerR) / 2;
+      const TAU = Math.PI * 2;
+      const polar = (r, a) => [cx + r * Math.cos(a), cy + r * Math.sin(a)];
+      const arcPath = (r0, r1, s, e) => {
+        const [x0, y0] = polar(r1, s);
+        const [x1, y1] = polar(r1, e);
+        const [x2, y2] = polar(r0, e);
+        const [x3, y3] = polar(r0, s);
+        const large = e - s > Math.PI ? 1 : 0;
+        return `M${x0} ${y0}A${r1} ${r1} 0 ${large} 1 ${x1} ${y1}L${x2} ${y2}A${r0} ${r0} 0 ${large} 0 ${x3} ${y3}Z`;
+      };
+
+      const wrap = document.createElement("div");
+      wrap.className = "donut-wrap";
+
+      const center = document.createElement("div");
+      center.className = "donut-center";
+      const centerTitle = document.createElement("strong");
+      const centerValue = document.createElement("span");
+      center.append(centerTitle, centerValue);
+      const resetCenter = () => {
+        centerTitle.textContent = scopeLabel;
+        centerValue.textContent = `${fmt(total)} ${measureLabel}`;
+      };
+      resetCenter();
+
+      const svg = document.createElementNS(SVGNS, "svg");
+      svg.setAttribute("viewBox", `0 0 ${size} ${size}`);
+      svg.setAttribute("width", size);
+      svg.setAttribute("height", size);
+      svg.setAttribute("aria-hidden", "true");
+      svg.classList.add("donut");
+
+      const sel = F().topics;
+      const hasSel = sel.size > 0;
+      let a0 = -Math.PI / 2;
+
+      for (const d of data) {
+        if (!total) break;
+        const frac = d.value / total;
+        const a1 = a0 + frac * TAU;
+        const mid = (a0 + a1) / 2;
+        const active = !hasSel || sel.has(d.id);
+        const pct = Math.round(frac * 100);
+
+        const g = document.createElementNS(SVGNS, "g");
+        g.classList.add("donut-slice");
+        if (!active) g.classList.add("dim");
+
+        const path = document.createElementNS(SVGNS, "path");
+        path.setAttribute("d", arcPath(innerR, outerR, a0, a1));
+        // Selected topics keep their colour; the rest grey out, same as the
+        // out-of-scope bars elsewhere.
+        path.setAttribute("fill", active ? colorOf(d.id) : "var(--bar-muted)");
+        g.append(path);
+
+        // Icon only where the slice is wide enough to seat the badge.
+        if (frac * TAU * iconR > 22) {
+          const [ix, iy] = polar(iconR, mid);
+          const badge = document.createElementNS(SVGNS, "circle");
+          badge.setAttribute("cx", ix);
+          badge.setAttribute("cy", iy);
+          badge.setAttribute("r", 11);
+          badge.classList.add("donut-badge");
+          g.append(badge);
+          const glyph = topicGlyph.get(d.id);
+          if (glyph) {
+            const img = document.createElementNS(SVGNS, "image");
+            img.setAttribute("href", glyph);
+            img.setAttribute("x", ix - 7);
+            img.setAttribute("y", iy - 7);
+            img.setAttribute("width", 14);
+            img.setAttribute("height", 14);
+            img.classList.add("donut-glyph");
+            g.append(img);
+          }
+        }
+
+        g.addEventListener("mouseenter", () => {
+          centerTitle.textContent = d.topic;
+          centerValue.textContent = `${fmt(d.value)} ${measureLabel} · ${pct}%`;
+        });
+        g.addEventListener("mouseleave", resetCenter);
+        g.addEventListener("click", () => {
+          document.querySelector(`#dh-topics button[data-value="${d.id}"]`)?.click();
+        });
+        svg.append(g);
+        a0 = a1;
+      }
+
+      wrap.append(svg, center);
+      return wrap;
+    };
     const esc = (v) =>
       String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const dataTable = (id, headers, rows) => {
@@ -440,19 +553,23 @@ const spanYears = years.length;
         perYear.map((d) => [yearLabel(d.year), fmt(d.value)])
       );
 
-      // B · distribution across topics
-      const scope = cells.filter((c) => yearIn(c.year));
+      // B · distribution across topics — donut (share of whole), bars (rank),
+      // or table. Scope by year only (not the topic selection) so the donut
+      // is a true whole-ring share; bars then narrow to the active topics.
+      // Bars use the active selection; the donut (below) shows every topic.
+      const activeScope = cells.filter((c) => yearIn(c.year));
       const perTopic = topics
         .filter((t) => active.has(t.id))
         .map((t) => ({
           topic: t.title,
           id: t.id,
-          value: scope.filter((c) => c.topicId === t.id).reduce((n, c) => n + m.of(c), 0),
+          value: activeScope.filter((c) => c.topicId === t.id).reduce((n, c) => n + m.of(c), 0),
         }))
         .filter((d) => d.value > 0)
         .sort((a, b) => b.value - a.value);
+      const distScope = yearScope() ?? "all years";
       document.getElementById("caption-distribution").textContent =
-        `${m.label} by primary topic · ${yearScope() ?? "all years"}`;
+        `${m.label} by primary topic · ${distScope}`;
       dataTable(
         "data-distribution",
         ["Topic", m.label],
@@ -482,6 +599,39 @@ const spanYears = years.length;
               tip: true,
             }),
           ],
+        })
+      );
+
+      // B2 · topic share donut — every topic, scoped by year only, so it
+      // reads as a share of the whole; the selection just colours the ring.
+      const shareScope = sessionCells.filter((c) => yearIn(c.year));
+      const allTopics = topics
+        .map((t) => ({
+          topic: t.title,
+          id: t.id,
+          value: shareScope.filter((c) => c.topicId === t.id).reduce((n, c) => n + m.of(c), 0),
+        }))
+        .filter((d) => d.value > 0)
+        .sort((a, b) => b.value - a.value);
+      const shareTotal = allTopics.reduce((n, d) => n + d.value, 0);
+      document.getElementById("caption-share").textContent =
+        `${m.label} share by topic · ${distScope}`;
+      dataTable(
+        "data-share",
+        ["Topic", m.label, "Share"],
+        allTopics.map((d) => [
+          d.topic,
+          fmt(d.value),
+          shareTotal ? `${Math.round((d.value / shareTotal) * 100)}%` : "—",
+        ])
+      );
+      mount(
+        "plot-share",
+        donutChart(allTopics, {
+          width: widthOf("panel-share"),
+          total: shareTotal,
+          measureLabel: m.label,
+          scopeLabel: distScope,
         })
       );
 
@@ -630,6 +780,82 @@ const spanYears = years.length;
   .panel .plot svg {
     background: transparent !important;
     font-family: var(--font-mono) !important;
+  }
+
+  .donut-wrap {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    padding-block: 0.4rem;
+  }
+
+  .donut {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .donut-slice path {
+    stroke: var(--paper);
+    stroke-width: 1.5;
+    cursor: pointer;
+    transition: opacity 150ms ease;
+  }
+
+  .donut-slice.dim {
+    opacity: 0.6;
+  }
+
+  .donut-slice.dim .donut-glyph {
+    opacity: 0.7;
+  }
+
+  .donut-slice:hover path {
+    opacity: 0.85;
+  }
+
+  .donut-badge {
+    fill: var(--paper);
+    stroke: var(--rule-strong);
+    stroke-width: 0.75;
+    pointer-events: none;
+  }
+
+  .donut-glyph {
+    filter: var(--glyph-filter);
+    pointer-events: none;
+  }
+
+  .donut-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0 24%;
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .donut-center strong {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    line-height: 1.1;
+  }
+
+  .donut-center span {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--lede-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .donut-slice path {
+      transition: none;
+    }
   }
 
   .cross-controls {
