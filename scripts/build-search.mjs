@@ -44,6 +44,43 @@ for (const file of files) {
   added++;
 }
 
+// Lost & Found: every delisted session and resource gets its own record, so
+// nothing Apple removed is excused from search. Each is marked "— lost & found"
+// in the result title and tagged with a status filter (recoverable / removed).
+let lostAdded = 0;
+try {
+  const lf = JSON.parse(
+    await readFile(join(root, "data", "normalized", "lost-and-found.json"), "utf8")
+  );
+  const topics = JSON.parse(
+    await readFile(join(root, "data", "normalized", "topics.json"), "utf8")
+  );
+  const topicTitle = new Map(topics.map((t) => [t.id, t.title]));
+  for (const x of lf.items) {
+    const kindLabel = x.kind === "session" ? "Session" : x.type ?? "Resource";
+    const status = x.recoverable ? "recoverable" : "removed";
+    const topic = topicTitle.get(x.primaryTopicId);
+    const filters = { status: [status], kind: [x.kind] };
+    if (x.year) filters.year = [String(x.year)];
+    if (topic) filters.topic = [topic];
+    await index.addCustomRecord({
+      // Unique per item — Pagefind keys records by URL, so a shared
+      // /lost-and-found/ would collapse all 743 into one. The #id anchor keeps
+      // them distinct (and lets the page scroll to the row later).
+      url: `/lost-and-found/#${x.id}`,
+      content: `${x.title}. ${kindLabel}. Lost & found — ${status} from Apple’s catalog${
+        x.year ? `, WWDC${String(x.year).slice(2)}` : ""
+      }.`,
+      language: "en",
+      meta: { title: `${x.title} — lost & found` },
+      filters,
+    });
+    lostAdded++;
+  }
+} catch (e) {
+  console.log("no lost-and-found dataset; skipping lost records —", e.message);
+}
+
 await index.writeFiles({ outputPath: join(dist, "pagefind") });
 await pagefind.close();
-console.log(`search index written · ${added} transcripts indexed`);
+console.log(`search index written · ${added} transcripts · ${lostAdded} lost & found indexed`);
