@@ -1,0 +1,205 @@
+---
+import Base from "../layouts/Base.astro";
+import lostAndFound from "../../data/normalized/lost-and-found.json";
+
+const { counts } = lostAndFound;
+---
+
+<Base
+  title="Lost & Found"
+  description={`${counts.total.toLocaleString("en")} WWDC sessions and resources Apple has delisted — ${counts.recoverable.toLocaleString("en")} whose original Apple link still works, ${counts.tombstone.toLocaleString("en")} removed for good. Recovered from dated snapshots of Apple's own feed.`}
+  wide
+  searchable={false}
+>
+  <section class="hero">
+    <p class="kicker">The lost &amp; found</p>
+    <h1>What Apple took down.</h1>
+    <p class="lede">
+      Apple quietly removes sessions and resources from its catalog. Each dated
+      snapshot we keep still holds the original link — so we can tell what’s
+      <strong>recoverable</strong> (Apple still serves it, just doesn’t list it)
+      from what’s a <strong>tombstone</strong> (gone, and this is the only
+      record it existed). The drawer Apple wishes you’d forget.
+    </p>
+    <div class="figures">
+      <div class="figure"><b>{counts.total.toLocaleString("en")}</b><span>delisted</span></div>
+      <div class="figure"><b>{counts.recoverable.toLocaleString("en")}</b><span>still recoverable</span></div>
+      <div class="figure"><b>{counts.tombstone.toLocaleString("en")}</b><span>removed for good</span></div>
+    </div>
+  </section>
+
+  <div class="controls" role="group" aria-label="Lost &amp; found filters">
+    <div class="lens">
+      <p class="kicker" id="lf-status-label">Fate</p>
+      <dh-chips class="chip-row" mode="single" value="" aria-labelledby="lf-status-label" id="lf-status-chips">
+        <button type="button" class="chip" data-value="">All</button>
+        <button type="button" class="chip" data-value="recoverable">Recoverable</button>
+        <button type="button" class="chip" data-value="tombstone">Removed</button>
+      </dh-chips>
+    </div>
+    <div class="lens">
+      <p class="kicker" id="lf-kind-label">Kind</p>
+      <dh-chips class="chip-row" mode="single" value="" aria-labelledby="lf-kind-label" id="lf-kind-chips">
+        <button type="button" class="chip" data-value="">All</button>
+        <button type="button" class="chip" data-value="session">Sessions</button>
+        <button type="button" class="chip" data-value="resource">Resources</button>
+      </dh-chips>
+    </div>
+  </div>
+
+  <p class="meta" id="lf-count" role="status"></p>
+  <table class="ledger" data-dh-reactive>
+    <caption class="visually-hidden">Delisted sessions and resources</caption>
+    <thead>
+      <tr>
+        <th scope="col">Item</th>
+        <th scope="col">Year</th>
+        <th scope="col">Last seen</th>
+        <th scope="col">Fate</th>
+      </tr>
+    </thead>
+    <tbody id="lf-rows"></tbody>
+  </table>
+  <p><button type="button" class="watch secondary" id="lf-more" hidden></button></p>
+
+  <script>
+    import data from "../../data/normalized/lost-and-found.json";
+    import topics from "../../data/normalized/topics.json";
+    import { RESOURCE_ICONS, TYPE_LABELS } from "../lib/resource-icons.js";
+
+    const KIND_LABEL = { session: "Session", resource: "Resource" };
+    const topicById = new Map(topics.map((t) => [t.id, t.title]));
+    const all = data.items;
+
+    const state = { status: null, kind: null, expanded: false };
+    const PREVIEW = 60;
+    const F = () => window.dhFilter ?? { years: new Set(), topics: new Set(), q: "" };
+
+    const rowsEl = document.getElementById("lf-rows");
+    const countEl = document.getElementById("lf-count");
+    const moreEl = document.getElementById("lf-more");
+    const statusChips = document.getElementById("lf-status-chips");
+    const kindChips = document.getElementById("lf-kind-chips");
+
+    statusChips.addEventListener("change", (e) => {
+      state.status = e.detail.value || null;
+      state.expanded = false;
+      render();
+    });
+    kindChips.addEventListener("change", (e) => {
+      state.kind = e.detail.value || null;
+      state.expanded = false;
+      render();
+    });
+    moreEl.addEventListener("click", () => {
+      state.expanded = true;
+      render();
+    });
+
+    function matchesFilter(x, f) {
+      if (f.years.size && !f.years.has(x.year)) return false;
+      if (f.topics.size && !f.topics.has(x.primaryTopicId)) return false;
+      return true;
+    }
+
+    function render() {
+      statusChips.value = state.status ?? "";
+      kindChips.value = state.kind ?? "";
+
+      const f = F();
+      const q = f.q.toLowerCase();
+      const list = all.filter((x) => {
+        if (state.status === "recoverable" && x.recoverable !== true) return false;
+        if (state.status === "tombstone" && x.recoverable !== false) return false;
+        if (state.kind && x.kind !== state.kind) return false;
+        if (!matchesFilter(x, f)) return false;
+        if (q && !x.title.toLowerCase().includes(q)) return false;
+        return true;
+      });
+      countEl.textContent = `${list.length.toLocaleString("en")} delisted items`;
+
+      const visible = state.expanded ? list : list.slice(0, PREVIEW);
+      rowsEl.replaceChildren(
+        ...visible.map((x) => {
+          const tr = document.createElement("tr");
+          if (x.recoverable === false) tr.className = "lf-gone";
+
+          // Item: kind/type icon + title (+ topic).
+          const itemCell = document.createElement("td");
+          const icon = x.kind === "resource" ? (RESOURCE_ICONS[x.type] ?? "") : SESSION_ICON;
+          const kindName = x.kind === "resource" ? (TYPE_LABELS[x.type] ?? x.type) : "Session";
+          const title = document.createElement("span");
+          title.className = "lf-title";
+          title.textContent = x.title;
+          itemCell.innerHTML = `<span class="res-icon" title="${kindName}">${icon}</span> `;
+          itemCell.append(title);
+          const sub = document.createElement("p");
+          sub.className = "meta lf-sub";
+          sub.textContent = [kindName, topicById.get(x.primaryTopicId)].filter(Boolean).join(" · ");
+          itemCell.append(sub);
+
+          // Year.
+          const yearCell = document.createElement("td");
+          yearCell.className = "mono-id";
+          yearCell.textContent = x.year ? `’${String(x.year).slice(2)}` : "—";
+
+          // Last seen (date the snapshot still had it).
+          const seenCell = document.createElement("td");
+          seenCell.className = "mono-id";
+          seenCell.textContent = x.lastSeen ?? "—";
+
+          // Fate: recoverable → link to Apple; tombstone → removed badge.
+          const fateCell = document.createElement("td");
+          if (x.recoverable && x.url) {
+            const a = document.createElement("a");
+            a.href = x.url;
+            a.rel = "external";
+            a.className = "lf-recover";
+            a.textContent = x.kind === "session" ? "Watch at Apple ↗" : "Open at Apple ↗";
+            fateCell.append(a);
+          } else {
+            const span = document.createElement("span");
+            span.className = "delisted";
+            span.title = "Removed by Apple; no live copy. This record is from our archive.";
+            span.textContent = "Removed";
+            fateCell.append(span);
+          }
+
+          tr.append(itemCell, yearCell, seenCell, fateCell);
+          return tr;
+        })
+      );
+      moreEl.hidden = state.expanded || list.length <= PREVIEW;
+      moreEl.textContent = `Show all ${list.length.toLocaleString("en")}`;
+    }
+
+    const SESSION_ICON =
+      '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="3" width="12" height="9" rx="1.5"/><path d="M6.5 6.2 10 8l-3.5 1.8z" fill="currentColor" stroke="none"/></svg>';
+
+    render();
+    addEventListener("dh-filter", () => {
+      state.expanded = false;
+      render();
+    });
+  </script>
+</Base>
+
+<style is:global>
+  .lf-sub {
+    margin: 0.15rem 0 0;
+  }
+  .lf-title {
+    font-weight: 560;
+  }
+  .lf-recover {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  /* Tombstones read as struck from the ledger. */
+  .lf-gone .lf-title {
+    text-decoration: line-through;
+    text-decoration-color: var(--rule-strong);
+    opacity: 0.85;
+  }
+</style>

@@ -438,7 +438,7 @@ const spanYears = years.length;
           row.style.animationDelay = `${Math.min(i * 22, 440)}ms`;
           if (grid) {
             row.innerHTML = `
-              ${s.img ? `<img class="gcard-thumb" src="${s.img}" alt="" loading="lazy" width="250" height="141" onerror="this.remove()">` : ""}
+              ${s.img ? `<a class="gcard-thumb-link" href="/sessions/${s.id}/" tabindex="-1" aria-hidden="true"><img class="gcard-thumb" src="${s.img}" alt="" loading="lazy" width="250" height="141" onerror="this.closest('.gcard-thumb-link').remove()"></a>` : ""}
               <h3><a href="/sessions/${s.id}/"></a></h3>
               <p class="meta">${yearLabel(s.y)} · ${minutes(s.d)}${snips}</p>`;
           } else {

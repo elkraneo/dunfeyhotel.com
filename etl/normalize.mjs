@@ -24,7 +24,10 @@ let snapName;
 if (snapArg !== -1) {
   snapName = process.argv[snapArg + 1];
 } else {
-  const dirs = (await readdir(rawRoot)).filter((d) => d.startsWith("snapshot-"));
+  // Latest = highest numeric snapshotId. Legacy/non-numeric snapshots (the
+  // old videos.json API) are archive-only and never the build source.
+  const dirs = (await readdir(rawRoot))
+    .filter((d) => d.startsWith("snapshot-") && Number.isFinite(Number(d.split("-")[1])));
   snapName = dirs.sort((a, b) => Number(a.split("-")[1]) - Number(b.split("-")[1])).at(-1);
 }
 if (!snapName) throw new Error("No raw snapshot found. Run fetch.mjs first.");
@@ -153,11 +156,27 @@ const resources = (contents.resources ?? []).map((r) => ({
   sessionIds: sessionsByResource.get(r.id) ?? [],
 }));
 
-// Apple removes resources from the catalog over time. Recover them from
-// older archived snapshots and mark them delisted — the archive is the
-// only place this history survives.
+// Apple removes sessions and resources from the catalog over time. Recover
+// them from older archived snapshots and mark them delisted — the archive is
+// the only place this history survives. Recoverability comes from the probe
+// cache (etl/probe-delisted.mjs, refreshed out of band): a still-200 Apple URL
+// is a link Apple's own site no longer surfaces; a 404 is a tombstone.
 const knownResourceIds = new Set(resources.map((r) => r.id));
 const currentSessionIds = new Set(sessions.map((s) => s.id));
+const currentEventIds = new Set(events.map((e) => e.id));
+const seenLostSessions = new Set();
+const lostFound = [];
+
+let delistedStatus = {};
+try {
+  delistedStatus = JSON.parse(await readFile(join(here, "..", "data", "delisted-status.json"), "utf8"));
+} catch {}
+const recoverabilityOf = (url) => {
+  const v = url && delistedStatus[url];
+  if (!v) return { recoverable: null, status: null }; // unprobed
+  return { recoverable: !!v.recoverable, status: v.status ?? null };
+};
+
 const olderSnapshots = (await readdir(rawRoot))
   .filter((d) => d.startsWith("snapshot-") && d !== snapName)
   .sort();
@@ -169,6 +188,7 @@ for (const dir of olderSnapshots) {
     continue;
   }
   const lastSeen = old.updated?.slice(0, 10) ?? dir.split("-").slice(2).join("-");
+  const oldSession = new Map((old.contents ?? []).map((c) => [c.id, c]));
   const oldRefs = new Map();
   for (const c of old.contents ?? []) {
     for (const rid of c.related?.resources ?? c.relatedResourceIds ?? []) {
@@ -176,18 +196,64 @@ for (const dir of olderSnapshots) {
       oldRefs.get(rid).push(c.id);
     }
   }
+
+  // Delisted resources.
   for (const r of old.resources ?? []) {
     if (knownResourceIds.has(r.id)) continue;
     knownResourceIds.add(r.id);
+    const refs = oldRefs.get(r.id) ?? [];
+    const refSession = refs.map((id) => oldSession.get(id)).find(Boolean);
+    const year = refSession ? Number(refSession.eventId.slice(4)) : null;
+    const { recoverable, status } = recoverabilityOf(r.url);
     resources.push({
       id: r.id,
       type: r.resource_type ?? r.resourceType ?? null,
       title: typo(r.title ?? null),
       description: typo(r.description ?? null),
       url: r.url ?? null,
-      sessionIds: (oldRefs.get(r.id) ?? []).filter((id) => currentSessionIds.has(id)),
+      sessionIds: refs.filter((id) => currentSessionIds.has(id)),
       delisted: true,
       lastSeen,
+    });
+    // developerForum entries are parameterized forum-search links Apple
+    // staples to sessions, not lost content — keep them out of Lost & Found.
+    const rtype = r.resource_type ?? r.resourceType ?? null;
+    if (rtype !== "developerForum") {
+      lostFound.push({
+        id: r.id,
+        kind: "resource",
+        type: rtype,
+        title: typo(r.title ?? null),
+        url: r.url ?? null,
+        year,
+        primaryTopicId: refSession?.primaryTopicID ?? null,
+        lastSeen,
+        recoverable,
+        status,
+      });
+    }
+  }
+
+  // Delisted sessions — real talks only (Video/Session), and only for event
+  // years the current catalog still publishes, so a whole-year rolloff isn't
+  // mistaken for a removal.
+  for (const c of old.contents ?? []) {
+    if (!TALK_TYPES.has(c.type)) continue;
+    if (!currentEventIds.has(c.eventId)) continue;
+    if (currentSessionIds.has(c.id) || seenLostSessions.has(c.id)) continue;
+    seenLostSessions.add(c.id);
+    const { recoverable, status } = recoverabilityOf(c.webPermalink);
+    lostFound.push({
+      id: c.id,
+      kind: "session",
+      type: c.type,
+      title: typo(c.title ?? null),
+      url: c.webPermalink ?? null,
+      year: Number(c.eventId.slice(4)),
+      primaryTopicId: c.primaryTopicID ?? null,
+      lastSeen,
+      recoverable,
+      status,
     });
   }
 }
@@ -301,9 +367,29 @@ const observatoryIndex = {
     .map((r) => ({ id: r.id, type: r.type, t: r.title, u: r.url })),
 };
 
+// Lost & Found: everything Apple delisted, split by whether its original URL
+// still resolves. Newest-lost first; unprobed items sort last.
+lostFound.sort((a, b) => (b.year ?? 0) - (a.year ?? 0) || a.title.localeCompare(b.title));
+const lostAndFound = {
+  generated: new Date().toISOString().slice(0, 10),
+  counts: {
+    total: lostFound.length,
+    recoverable: lostFound.filter((x) => x.recoverable === true).length,
+    tombstone: lostFound.filter((x) => x.recoverable === false).length,
+    unprobed: lostFound.filter((x) => x.recoverable === null).length,
+    sessions: lostFound.filter((x) => x.kind === "session").length,
+    resources: lostFound.filter((x) => x.kind === "resource").length,
+  },
+  items: lostFound,
+};
+
 await write("aggregates.json", aggregates);
 await write("explorer.json", explorer);
 await write("observatory-index.json", observatoryIndex);
+await write("lost-and-found.json", lostAndFound);
+console.log(
+  `  lost & found: ${lostAndFound.counts.total} delisted (${lostAndFound.counts.recoverable} recoverable, ${lostAndFound.counts.tombstone} tombstone)`
+);
 
 console.log(`Normalized ${snapName}:`);
 console.log(`  ${events.length} events, ${topics.length} topics, ${sessions.length} talks, ${resources.length} resources`);

@@ -12,8 +12,8 @@ const nav = [
   { label: "Observatory", href: "/observatory/", section: "/observatory" },
   { label: "Transcripts", href: "/transcripts/", section: "/transcripts" },
   { label: "Resources", href: "/resources/", section: "/resources" },
+  { label: "Lost & Found", href: "/lost-and-found/", section: "/lost-and-found" },
   { label: "Dispatches", href: "/dispatches/", section: "/dispatches" },
-  { label: "About", href: "/about/", section: "/about" },
 ];
 const current = (section) => (path.startsWith(section) ? "page" : undefined);
 const fullTitle = title ? `${title} · Dunfey Hotel` : "Dunfey Hotel — WWDC as data";
@@ -115,6 +115,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
           </p>
           <p class="meta">
             made with ★ in Berlin by <a href="https://elkraneo.com">elkraneo</a>
+          </p>
+          <p class="meta colophon-links">
+            <a href="/about/" aria-current={current("/about")}>About</a>
           </p>
         </div>
         <p class="stamp">
