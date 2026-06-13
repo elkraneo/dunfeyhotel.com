@@ -1,5 +1,6 @@
 ---
 import SessionCard from "../../components/SessionCard.astro";
+import SessionViewToggle from "../../components/SessionViewToggle.astro";
 import Base from "../../layouts/Base.astro";
 import {
   events,
@@ -45,7 +46,10 @@ const next = years[idx + 1];
     <a href={`/observatory/?year=${year}`}>Open in observatory</a>
   </p>
 
-  <ul class="session-rows">
+  <div class="session-controls">
+    <SessionViewToggle />
+  </div>
+  <ul class="session-rows" data-session-grid>
     {talks.map((s) => (
       <SessionCard session={s} showYear={false} />
     ))}

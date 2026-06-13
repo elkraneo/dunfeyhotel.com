@@ -149,7 +149,7 @@ const res = s.resourceIds
     {related.length > 0 && (
       <section class="block" aria-labelledby={`related-${s.id}`}>
         <h2 class="kicker" id={`related-${s.id}`}>Related sessions</h2>
-        <ul class="session-rows">
+        <ul class="session-rows" data-session-grid>
           {related.map((r) => (
             <SessionCard session={r} />
           ))}

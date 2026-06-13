@@ -1,5 +1,6 @@
 ---
 import SessionCard from "../../components/SessionCard.astro";
+import SessionViewToggle from "../../components/SessionViewToggle.astro";
 import Base from "../../layouts/Base.astro";
 import {
   topics,
@@ -63,12 +64,15 @@ const byYearGroups = years
     <p class="meta">{years[0]} → {years.at(-1)}</p>
   </section>
 
+  <div class="session-controls">
+    <SessionViewToggle />
+  </div>
   {byYearGroups.map(({ year, talks: group }) => (
     <section class="block" aria-labelledby={`y-${year}`}>
       <h2 class="kicker" id={`y-${year}`}>
         <a href={`/years/${year}/`}>WWDC{String(year).slice(2)}</a> · {group.length}
       </h2>
-      <ul class="session-rows">
+      <ul class="session-rows" data-session-grid>
         {group.map((s) => (
           <SessionCard session={s} showYear={false} />
         ))}

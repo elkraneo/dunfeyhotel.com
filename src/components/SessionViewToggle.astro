@@ -1,0 +1,50 @@
+---
+// List ⇄ grid picker for session lists — the same control as the observatory
+// cross-section. It flips a global, persisted preference (data-session-view on
+// <html>); every list marked [data-session-grid] obeys it, so the choice holds
+// across pages. Set once, applies everywhere.
+---
+
+<dh-chips class="seg session-view-toggle" mode="single" value="list" aria-label="Show sessions as">
+  <button type="button" class="seg-opt" data-value="list">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+      <line x1="2.5" y1="4" x2="13.5" y2="4" /><line x1="2.5" y1="8" x2="13.5" y2="8" /><line x1="2.5" y1="12" x2="13.5" y2="12" />
+    </svg>
+    <span>List</span>
+  </button>
+  <button type="button" class="seg-opt" data-value="grid">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">
+      <rect x="2.3" y="2.3" width="4.6" height="4.6" rx="1" /><rect x="9.1" y="2.3" width="4.6" height="4.6" rx="1" /><rect x="2.3" y="9.1" width="4.6" height="4.6" rx="1" /><rect x="9.1" y="9.1" width="4.6" height="4.6" rx="1" />
+    </svg>
+    <span>Grid</span>
+  </button>
+</dh-chips>
+
+<script>
+  import "../lib/dh-chips.js";
+
+  type ChipsElement = HTMLElement & { value: string };
+  type ChipsEvent = CustomEvent<{ value: string }>;
+
+  const root = document.documentElement;
+  const current = (): "list" | "grid" =>
+    root.dataset.sessionView === "grid" ? "grid" : "list";
+  const toggles = () =>
+    document.querySelectorAll<ChipsElement>(".session-view-toggle");
+
+  const apply = (v: "list" | "grid") => {
+    if (v === "grid") root.dataset.sessionView = "grid";
+    else delete root.dataset.sessionView;
+    try {
+      localStorage.setItem("dh-session-view", v);
+    } catch {}
+    toggles().forEach((t) => (t.value = v));
+  };
+
+  toggles().forEach((t) => {
+    t.value = current();
+    t.addEventListener("change", (e) =>
+      apply((e as ChipsEvent).detail.value === "grid" ? "grid" : "list")
+    );
+  });
+</script>

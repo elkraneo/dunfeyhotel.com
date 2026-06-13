@@ -57,6 +57,14 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
         } catch {}
       })();
     </script>
+    <script is:inline>
+      // Apply the saved list/grid preference before paint so marked session
+      // lists render in the chosen layout without a flash.
+      try {
+        if (localStorage.getItem("dh-session-view") === "grid")
+          document.documentElement.dataset.sessionView = "grid";
+      } catch {}
+    </script>
     <title>{fullTitle}</title>
     <meta name="description" content={desc} />
     <meta property="og:title" content={fullTitle} />
