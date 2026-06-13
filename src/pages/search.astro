@@ -9,7 +9,7 @@ import Base from "../layouts/Base.astro";
 >
   <section class="hero">
     <p class="kicker">The concierge</p>
-    <h1>Ask for anything in the registry.</h1>
+    <h1>Search the registry.</h1>
     <p class="lede">
       Full-text search from the front desk above — titles, descriptions,
       on-screen code, catalogs and dispatches. Year and topic chips narrow the
@@ -147,7 +147,7 @@ import Base from "../layouts/Base.astro";
           .filter(Boolean);
       const q = f.q || null;
       if (!q && !Object.keys(filters).length) {
-        countEl.textContent = "Type, or press a chip — the registry answers.";
+        countEl.textContent = "Type to search, or filter by year and topic.";
         resultsEl.replaceChildren();
         moreEl.hidden = true;
         return;
