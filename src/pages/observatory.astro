@@ -516,7 +516,10 @@ const spanYears = years.length;
               <span class="row-leader" aria-hidden="true"></span>
               <span class="row-duration">${minutes(s.d)}</span>`;
           }
-          const titleLink = row.querySelector("a");
+          // The title anchor lives in the <h3>; in grid view the first <a> is
+          // the thumbnail link, so target h3 a explicitly or textContent would
+          // overwrite the thumbnail <img>.
+          const titleLink = row.querySelector("h3 a");
           if (titleLink) titleLink.textContent = s.t;
           rows.append(row);
         });
