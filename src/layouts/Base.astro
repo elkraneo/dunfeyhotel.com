@@ -87,7 +87,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
     <div class:list={["shell", { wide }]}>
       <header class="masthead">
         <a class="wordmark" href="/">Dunfey<span class="amp"> · </span>Hotel</a>
-        <span class="tagline">est. 1983</span>
+        <a class="tagline plaque" href="/about/" aria-current={current("/about")} title="About — the Dunfey Hotel, est. 1983">
+          est. 1983<span class="visually-hidden"> — about this site</span>
+        </a>
         <nav aria-label="Primary">
           {nav.map((item) => (
             <a href={item.href} aria-current={current(item.section)}>{item.label}</a>
@@ -116,9 +118,6 @@ const canonical = new URL(Astro.url.pathname, Astro.site).href;
           </p>
           <p class="meta">
             made with ★ in Berlin by <a href="https://elkraneo.com">elkraneo</a>
-          </p>
-          <p class="meta colophon-links">
-            <a href="/about/" aria-current={current("/about")}>About</a>
           </p>
         </div>
         <p class="stamp">

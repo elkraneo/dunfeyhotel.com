@@ -13,6 +13,37 @@ import { aggregates } from "../lib/data.js";
       session Apple still publishes, indexed by category, duration, the code
       shown on screen, and how each session links to the others.
     </p>
+
+    <section class="block" aria-labelledby="the-house">
+      <h2 class="kicker" id="the-house">The house</h2>
+      <figure class="house-figure">
+        <img
+          src="/about/dunfey-hotel-san-mateo-1985.webp"
+          alt="The Dunfey Hotel in San Mateo, photographed in 1985 — a low building in the style of a Tudor castle."
+          width="418"
+          height="277"
+          loading="lazy"
+        />
+        <figcaption class="meta">The Dunfey Hotel, San Mateo, 1985.</figcaption>
+      </figure>
+      <p>
+        It opened as a Royal Coach Inn, built like a Tudor castle, and spent its
+        years inside the Dunfey family's chain of motor inns before becoming the
+        Regency Plaza in 1997. The site is a Marriott today.
+      </p>
+      <p>
+        Its one claim on this page: in August 1983 it hosted the Apple
+        Independent Software Developers Conference — the gathering that grew into
+        WWDC. The trade report at the time ran under the headline
+        <em>“Report from the Castle.”</em> We kept the name, and the date.
+      </p>
+      <p class="meta">
+        Photograph and history from
+        <a href="https://apple.fandom.com/wiki/Dunfey_Hotels" rel="external">Dunfey
+        Hotels</a> on the Apple Wiki (Fandom), under
+        <a href="https://creativecommons.org/licenses/by-sa/3.0/" rel="external license">CC&nbsp;BY-SA&nbsp;3.0</a>.
+      </p>
+    </section>
     <p>
       <strong>Everything links to the source.</strong> Videos, transcripts,
       sample code and documentation live at
@@ -41,3 +72,24 @@ import { aggregates } from "../lib/data.js";
     </p>
   </article>
 </Base>
+
+<style>
+  .house-figure {
+    margin: 1.2rem 0 1.4rem;
+    max-width: 26rem;
+  }
+
+  .house-figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-s);
+    /* The period sepia of the session thumbnails suits a 1985 photograph. */
+    filter: var(--thumb-filter);
+  }
+
+  .house-figure figcaption {
+    margin-top: 0.4rem;
+  }
+</style>

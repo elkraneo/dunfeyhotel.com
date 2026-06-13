@@ -239,6 +239,27 @@ h3 {
   color: var(--ink-soft);
 }
 
+/* The "est. 1983" tagline is the way into the house's story — a little plaque
+   in the masthead rather than a stray "About" link in the footer. */
+.masthead a.tagline.plaque {
+  text-decoration: none;
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.masthead a.tagline.plaque:hover,
+.masthead a.tagline.plaque:focus-visible {
+  color: var(--oxblood);
+  border-color: var(--oxblood);
+}
+
+.masthead a.tagline.plaque[aria-current="page"] {
+  color: var(--oxblood);
+  border-color: color-mix(in srgb, var(--oxblood) 65%, transparent);
+}
+
 .masthead nav {
   margin-left: auto;
   display: flex;
