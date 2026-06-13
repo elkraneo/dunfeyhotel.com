@@ -238,9 +238,19 @@ const spanYears = years.length;
       const f = F();
       return f.years.size === 0 || f.years.has(y);
     };
+    // A compact label for the selected years. The chips themselves show which
+    // years are active, so this just needs to fit a caption and the donut hole:
+    // a contiguous run collapses to a range, anything longer to a count.
     const yearScope = () => {
       const f = F();
-      return f.years.size ? [...f.years].sort().map(shortYear).join("+") : null;
+      if (!f.years.size) return null;
+      const ys = [...f.years].sort((a, b) => a - b);
+      const lo = ys[0];
+      const hi = ys[ys.length - 1];
+      if (ys.length === 1) return shortYear(lo);
+      if (ys.length === hi - lo + 1) return `${shortYear(lo)}–${shortYear(hi)}`;
+      if (ys.length === 2) return `${shortYear(lo)}+${shortYear(hi)}`;
+      return `${ys.length} years`;
     };
 
     // ——— typed DOM helpers ———
